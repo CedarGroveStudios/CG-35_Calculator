@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # rpn_calculator.py
-# 2022-01-09 v0.8
+# 2022-01-10 v0.810
 
 # An HP-35 -like RPN calculator for the Adafruit PyPortal Titano
 
@@ -19,6 +19,10 @@ from cedargrove_widgets.bubble_display import BubbleDisplay
 from jepler_udecimal import Decimal, getcontext, setcontext, localcontext
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
+# To calibrate the touchscreeen, change calibrate=False to calibrate=True
+# Enter new calibration settings in cedargrove_calculator.buttons_pyportal.py
+CALIBRATE = False
+
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
 #sdcard = SDCard()
@@ -34,9 +38,7 @@ display.brightness = 1.0  # Titano: 0.55 max for camera image
 # Instatiate case group and buttons class
 case_group = CalculatorCase()
 
-# To calibrate the touchscreeen, change calibrate=False to calibrate=True
-# Enter new calibration settings in cedargrove_calculator.buttons_pyportal.py
-buttons = CalculatorButtons(l_margin=case_group.l_margin, timeout=10, calibrate=False, click=True)
+buttons = CalculatorButtons(l_margin=case_group.l_margin, timeout=10, calibrate=CALIBRATE, click=True)
 
 # Instantiate the BubbleDisplay widget
 x_reg_display = BubbleDisplay(
@@ -111,14 +113,12 @@ def roll_stack():
     T_REG = temp
     return
 
-def convert_display_to_decimal(text=" 0.            "):
+def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     """Convert display text to an equivalent Decimal value."""
-    if len(text) != 15:
-        raise ValueError("Invalid input string length.")
 
-    sign = text[0]
-    coefficient = text[1:12]
-    exponent = text[12:]
+    sign = coefficient[0]
+    coefficient = coefficient[1:12]
+    exponent = exponent[0:3]
 
     # Reformat sign for decimal value conversion
     if sign == " ":
@@ -127,8 +127,10 @@ def convert_display_to_decimal(text=" 0.            "):
     # Clean up and reformat coefficient
     while coefficient.find(" ") >= 0:
         coefficient = coefficient.split(" ", 1)[0] + coefficient.split(" ", 1)[1]
+    print("130", "'"+coefficient+"'", len(coefficient))
     if coefficient[0] == ".":
         coefficient = "0" + coefficient
+    print("133", "'"+coefficient+"'", len(coefficient))
 
     # Clean up and reformat exponent
     while exponent.find(" ") >= 0:
@@ -142,7 +144,7 @@ def convert_display_to_decimal(text=" 0.            "):
     #print("text:", text)
     #print("sign, coefficient, exponent:", sign, coefficient, exponent)
     #print("sign+coefficient+exponent  :", sign + coefficient + exponent)
-    #print("Decimal:", Decimal(sign+coefficient+exponent))
+    print("147 Decimal:", Decimal(sign+coefficient+exponent))
 
     return Decimal(sign+coefficient+exponent)
 
@@ -158,24 +160,28 @@ def convert_decimal_to_display(value=Decimal(0)):
     else:
         coefficient = " " + decimal_text.split("E", 1)[0]
 
+    print("163", "'"+coefficient+"'", len(coefficient))
     if coefficient.find(".") < 0 and len(coefficient) < 10:
         coefficient = coefficient + "."
+    print("166", "'"+coefficient+"'", len(coefficient))
 
     # add trailing spaces to coefficient if needed
-    coefficient = coefficient + (" " * (12 - len(coefficient)))
+    #coefficient = coefficient + (" " * (12 - len(coefficient)))
 
-    if len(coefficient) > 12:
-        # remove leading zeros
-        print("convert_decimal_to_display(): remove leading zeros")
-        while coefficient.find(".") >1 and coefficient[1] == "0":
-            coefficient = coefficient[0] + coefficient[2:]
-            print("value, coefficient, len(coefficient)", value, coefficient, len(coefficient))
+    #if len(coefficient) > 12:
+    if True:
+        if coefficient[1:] != "0.":
+            # remove leading zeros
+            print("convert_decimal_to_display(): remove leading zeros")
+            while coefficient.find(".") >1 and coefficient[1] == "0":
+                coefficient = coefficient[0] + coefficient[2:]
+                print("value, coefficient, len(coefficient)", value, coefficient, len(coefficient))
 
-        # remove trailing zeros
-        #print("remove TRAILING zeros")
+        # remove trailing zeros from coefficient
+        print("convert_decimal_to_display(): remove TRAILING zeros")
         while coefficient.find(".") <= 12 and coefficient[-1] == "0":
             coefficient = coefficient[0:-1]
-            #print("value, coefficient, len(coefficient)", value, coefficient, len(coefficient))
+            print("value, coefficient, len(coefficient)", value, coefficient, len(coefficient))
 
     if decimal_text.find("E") < 0:
         exponent = "   "
@@ -202,15 +208,19 @@ def print_stack():
 def update_x_reg():
     # Move DISPLAY registers' content to the X_REG
     global X_REG, DISPLAY_C, DISPLAY_E
-    #print("update x_reg()", "'" + DISPLAY_C + DISPLAY_E + "'")
-    X_REG = convert_display_to_decimal(DISPLAY_C + (" " * (12 - len(DISPLAY_C))) + DISPLAY_E)
+    print("update x_reg()", "'" + DISPLAY_C + "' '" + DISPLAY_E + "'")
+    X_REG = convert_display_to_decimal(DISPLAY_C, DISPLAY_E)
     return
 
 def display_x_reg():
     # Update the LED display with X_REG value
     global X_REG
-    #print("display x_reg()", X_REG)
-    x_reg_display.text = convert_decimal_to_display(X_REG)[0] + convert_decimal_to_display(X_REG)[1]
+    print("display x_reg()", X_REG)
+    coefficient, exponent = convert_decimal_to_display(X_REG)
+    DISPLAY_C = coefficient
+    DISPLAY_E = exponent
+    coefficient = coefficient + (" " * (12 - len(coefficient)))  # If needed, pad coefficient with spaces
+    x_reg_display.text = coefficient + exponent
     return
 
 def conversion_test():
@@ -230,7 +240,7 @@ def conversion_test():
     while True:
         for i in TEST_CASES:
             a = i[0]
-            b = convert_display_to_decimal(a)
+            b = convert_display_to_decimal(a[0:12], a[12:15])
             print("* display text:     -> Decimal value:      should be:")
             print(f"  '{a:15s}'    '{b}'{(16-len(str(b)))*" "}  '{i[1]}'{(16-len(str(i[1])))*" "}  {str(b) == i[1]}")
             c = convert_decimal_to_display(b)[0] + convert_decimal_to_display(b)[1]
@@ -277,21 +287,24 @@ while True:
         if operation_completed:
             # Prepare for digit entry when previous operation has finished
             #DISPLAY_C = DISPLAY_C + (" " * (12 - len(DISPLAY_C)))
-            #Y_REG = convert_display_to_decimal(DISPLAY_C + DISPLAY_E)
+            #Y_REG = convert_display_to_decimal(DISPLAY_C, DISPLAY_E)
 
             clr("x")
             eex_flag = dp_flag = False
             operation_completed = False
 
         if len(DISPLAY_C) < 12:
-            if DISPLAY_C[1:] == "0." or DISPLAY_C[1:] == ".":  # first digit entry
-                if key_name == ".":
-                    dp_flag = True
-                    DISPLAY_C = DISPLAY_C.replace("0.", key_name)
-                else:
-                    DISPLAY_C = DISPLAY_C.replace("0", key_name)
+            if DISPLAY_C[1:] == "0." and key_name == ".":
+                # first digit entry
+                dp_flag = True
+                print("300 before", DISPLAY_C, len(DISPLAY_C))
+                DISPLAY_C = DISPLAY_C.replace("0.", key_name)
+                print("302 after", DISPLAY_C, len(DISPLAY_C))
+            elif DISPLAY_C[1:] == "0.":
+                DISPLAY_C = DISPLAY_C.replace("0", key_name)
             else:
                 dp_index = DISPLAY_C.index(".")
+                print("307", dp_flag, dp_index, DISPLAY_C, len(DISPLAY_C))
                 if key_name != ".":
                     if dp_flag:
                         # Fractional portion (right of decimal separator)
