@@ -42,7 +42,9 @@ class CalculatorCase(displayio.Group):
         WIDTH = board.DISPLAY.width
         HEIGHT = board.DISPLAY.height
 
-        self._l_margin = (WIDTH // 2) - int(round(HP_CASE[0][1][0] / 4.3 * HEIGHT / 2, 0))
+        self._l_margin = (WIDTH // 2) - int(
+            round(HP_CASE[0][1][0] / 4.3 * HEIGHT / 2, 0)
+        )
 
         # FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
         FONT_0 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
@@ -62,7 +64,9 @@ class CalculatorCase(displayio.Group):
 
         # Power switch
         pwr_text = Label(
-            font=FONT_0, text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35", color=Colors.BLACK
+            font=FONT_0,
+            text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
+            color=Colors.BLACK,
         )
         pwr_text.anchor_point = (0, 0)
         pwr_text.anchored_position = (

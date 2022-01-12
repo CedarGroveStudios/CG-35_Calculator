@@ -85,6 +85,7 @@ class CalculatorButtons(displayio.Group):
 
         if calibrate:
             from cedargrove_touch_calibrator import touch_calibrator
+
             touch_calibrator()
 
         # Create a simple indexed list of button names
@@ -101,7 +102,7 @@ class CalculatorButtons(displayio.Group):
             calibration=((8720, 56775), (5031, 59639)),  # Titano
             size=(WIDTH, HEIGHT),
             samples=4,  # Default: 4 samples
-            z_threshold=10000  # Default: 10000
+            z_threshold=10000,  # Default: 10000
         )
 
         # FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
@@ -172,7 +173,7 @@ class CalculatorButtons(displayio.Group):
                         hold_time += 0.1
                         if hold_time >= self._timeout and not timeout_beep:
                             if self._click:
-                               tone(board.A0, 1320, 0.050, length=8)  # Beep when held
+                                tone(board.A0, 1320, 0.050, length=8)  # Beep when held
                             timeout_beep = True
                     button.selected = False
                     if self._click:

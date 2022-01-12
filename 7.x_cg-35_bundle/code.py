@@ -1,22 +1,49 @@
-# SPDX-FileCopyrightText: 2021 Cedar Grove Maker Studios
+# SPDX-FileCopyrightText: 2022 Cedar Grove Maker Studios
 # SPDX-License-Identifier: MIT
 
-# rpn_calculator.py
-# 2022-01-11 v0.811
+"""
+cg-35_calculator.py  2022-01-12 v0.812 ALPHA
+============================================
 
-# An HP-35 -like RPN calculator for the Adafruit PyPortal Titano
-# 10-digit display with 20-digit precision
+An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
+calculator sports a 10-digit LED display with 20-digit internal calculation
+precision.
+
+* Author(s): JG for Cedar Grove Maker Studios
+
+Implementation Notes
+--------------------
+**Hardware:**
+* Adafruit 'PyPortal Titano
+  <https://www.adafruit.com/product/4444>
+
+**Software and Dependencies:**
+* Adafruit CircuitPython firmware for the supported boards:
+  <https://circuitpython.org/downloads>
+* Jeff Epler's adaptation of micropython udecimal and utrig:
+  <https://github.com/jepler/Jepler_CircuitPython_udecimal>
+
+
+to do before v1.0 beta release:
+    - add exponent digit entry
+    - convert trigometric functions to degrees
+optional/future features:
+    - degrees/radians switch
+    - scientific/engineering/fixed decimal point mode
+"""
 
 import board
 import displayio
 import time
 import gc
+
 gc.collect()  # Clean-up memory heap space
 
 from cedargrove_calculator.buttons_pyportal import CalculatorButtons
 from cedargrove_calculator.case import CalculatorCase
 from cedargrove_widgets.bubble_display import BubbleDisplay
-#from cedargrove_sdcard import SDCard
+
+# from cedargrove_sdcard import SDCard
 from jepler_udecimal import Decimal, getcontext, setcontext, localcontext
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
@@ -26,76 +53,81 @@ CALIBRATE = False
 
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
-#sdcard = SDCard()
+# sdcard = SDCard()
 
 # Create the primary displayio.Group layer
 calculator = displayio.Group()
 
-# Rotate the display; portrait mode
+# Rotate the display to portrait orientation
 display = board.DISPLAY
 display.rotation = 90
 display.brightness = 1.0  # Titano: 0.55 max for camera image
 
 # Instatiate case group and buttons class
 case_group = CalculatorCase()
+buttons = CalculatorButtons(
+    l_margin=case_group.l_margin, timeout=10, calibrate=CALIBRATE, click=True
+)
 
-buttons = CalculatorButtons(l_margin=case_group.l_margin, timeout=10, calibrate=CALIBRATE, click=True)
-
-# Instantiate the BubbleDisplay widget
-x_reg_display = BubbleDisplay(
+# Instantiate the BubbleDisplay widget: 15-digit display, dedicated decimal point
+led_display = BubbleDisplay(
     units=5, digits=3, mode="HP-35", center=(0.5, 0.08), size=0.58
 )
-WIDTH = x_reg_display.display_size[0]
-HEIGHT = x_reg_display.display_size[1]
 
+# Initiate the display, memory, and stack
 DISPLAY_C = " 0."
 DISPLAY_E = " 00"
 X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
 
+# Sets the default internal precision and exponent range
 getcontext().prec = 20
 getcontext().Emax = 99
 getcontext().Emin = -99
 
+# Add the case, bubble display, and button displayio layers
 calculator.append(case_group)
-calculator.append(x_reg_display)
+calculator.append(led_display)
 calculator.append(buttons)
 
 
 def clr(register=None):
+    """Clear all or just X_REG; None for all registers. Clears the display."""
     global DISPLAY_C, DISPLAY_E, X_REG, Y_REG, Z_REG, T_REG, MEM
     if not register:
-        # Clear all registers
+        # Clear stack registers, memory, and display
         DISPLAY_C = " 0."
         DISPLAY_E = " 00"
         X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
     elif register == "x":
+        # Clear X_REG and display
         DISPLAY_C = " 0."
         DISPLAY_E = " 00"
         X_REG = Decimal("0")
     else:
-        # no register specified
-        return False
+        return False  # No register specified
     return True
 
 
 def get_key():
-    #  Get pressed key name. This is currently a blocking method.
+    """Get pressed key name. This is a blocking method (for now)."""
     key_name = None
     while not key_name:
         key_name, _, hold_time = buttons.read_buttons()
-    #print(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
+    # print(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
     return key_name
 
+
 def push_stack():
-    # push display value into the stack; T is lost
+    """Push stack values; T_REG is lost."""
     global X_REG, Y_REG, Z_REG, T_REG
     T_REG = Z_REG
     Z_REG = Y_REG
     Y_REG = X_REG
     return
 
+
 def pull_stack():
-    # pull (drop) Y into X, Z into Y, and T into Z; "0" into T
+    """Pull (drop) stack values; place "0" into T_REG."""
     global X_REG, Y_REG, Z_REG, T_REG
     X_REG = Y_REG
     Y_REG = Z_REG
@@ -103,8 +135,9 @@ def pull_stack():
     T_REG = Decimal("0")
     return
 
+
 def roll_stack():
-    # roll stack values
+    """Roll stack values; place X_REG into T_REG."""
     global X_REG, Y_REG, Z_REG, T_REG
     temp = X_REG
     X_REG = Y_REG
@@ -112,6 +145,7 @@ def roll_stack():
     Z_REG = T_REG
     T_REG = temp
     return
+
 
 def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     """Convert display text to an equivalent Decimal value."""
@@ -135,13 +169,13 @@ def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     if exponent == "":
         exponent = "0"
     exponent = "E" + str(int(exponent))
+    return Decimal(sign + coefficient + exponent)
 
-    return Decimal(sign+coefficient+exponent)
 
 def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
-    value = value.quantize(Decimal("1.000000000"))  # round to 10-digit precision
-    #value = value.normalize()  # strip trailing zeros and create canonical value
+    # Round to 10-digit precision and convert to string
+    value = value.quantize(Decimal("1.000000000"))
     decimal_text = str(value)
 
     # Retain "-" as sign but replace "+" with " "
@@ -149,33 +183,34 @@ def convert_decimal_to_display(value=Decimal("0")):
         coefficient = decimal_text.split("E", 1)[0]
     else:
         coefficient = " " + decimal_text.split("E", 1)[0]
-    # place a decimal point in tenth digit position if possible
+    # Place a decimal point in tenth digit position if possible
     if coefficient.find(".") < 0 and len(coefficient) < 10:
         coefficient = coefficient + "."
-    # remove leading zeros except at start of digit entry
+    # Remove leading zeros except at start of digit entry
     if coefficient[1:] != "0.":
-        while coefficient.find(".") >1 and coefficient[1] == "0":
+        while coefficient.find(".") > 1 and coefficient[1] == "0":
             coefficient = coefficient[0] + coefficient[2:]
-    # remove trailing zeros from coefficient
+    # Remove trailing zeros from coefficient
     while coefficient.find(".") <= 12 and coefficient[-1] == "0":
         coefficient = coefficient[0:-1]
-    # don't display minus zero coefficient
+    # Don't display a minus zero coefficient
     if coefficient == "-0.":
         coefficient = " 0."
 
-    # if no exponent separator or coefficient is zero, blank the exponent value
+    # If no exponent separator or coefficient is zero, blank the exponent value
     if decimal_text.find("E") < 0 or coefficient[1:] == "0.":
         exponent = "   "
     else:
         exponent = decimal_text.split("E", 1)[1]
-
     return coefficient, exponent
 
 
 def print_stack():
-    # print all stack registers
+    """Print stack registers and auxillary memory."""
     print("-" * 32)
-    print(f"D.X_REG:  {X_REG}  DISPLAY: '{convert_decimal_to_display(X_REG)[0] + convert_decimal_to_display(X_REG)[1]}'")
+    print(
+        f"D.X_REG:  {X_REG}  DISPLAY: '{convert_decimal_to_display(X_REG)[0] + convert_decimal_to_display(X_REG)[1]}'"
+    )
     print(f"D.Y_REG:  {Y_REG}")
     print(f"D.Z_REG:  {Z_REG}")
     print(f"D.T_REG:  {T_REG}")
@@ -184,28 +219,29 @@ def print_stack():
     return
 
 
-def display_display_reg():
-    # Display contents of DISPLAY registers
+def show_display_reg():
+    """Display contents of DISPLAY registers."""
     global DISPLAY_C, DISPLAY_E
     coefficient = DISPLAY_C
     exponent = DISPLAY_E
     if exponent[1:3] == "00":
         exponent = "   "
-    coefficient = coefficient + (" " * (12 - len(coefficient)))  # If needed, pad coefficient with spaces
-    x_reg_display.text = coefficient + exponent
+    # If needed, pad coefficient with spaces
+    coefficient = coefficient + (" " * (12 - len(coefficient)))
+    led_display.text = coefficient + exponent
     return
 
 
 def display_error():
-    """Show error indicator on display without modifying registers."""
+    """Show error indicator on display."""
     global error_flag
-    x_reg_display.text = "---------------"
+    led_display.text = "---------------"
     error_flag = True
     return
 
 
 def update_x_reg():
-    # Move DISPLAY registers' content to the X_REG
+    """Move DISPLAY registers' content to the X_REG."""
     global X_REG, DISPLAY_C, DISPLAY_E
     X_REG = convert_display_to_decimal(DISPLAY_C, DISPLAY_E)
     return
@@ -217,8 +253,9 @@ def display_x_reg():
     coefficient, exponent = convert_decimal_to_display(X_REG)
     DISPLAY_C = coefficient
     DISPLAY_E = exponent
-    coefficient = coefficient + (" " * (12 - len(coefficient)))  # If needed, pad coefficient with spaces
-    x_reg_display.text = coefficient + exponent
+    # If needed, pad coefficient with spaces
+    coefficient = coefficient + (" " * (12 - len(coefficient)))
+    led_display.text = coefficient + exponent
     return
 
 
@@ -227,9 +264,9 @@ display.show(calculator)
 gc.collect()
 free_memory = gc.mem_free()
 frame = time.monotonic() - t0
-x_reg_display.text = f"{frame:5.02f}    {free_memory/1000:6.03f}"
+led_display.text = f"{frame:5.02f}    {free_memory/1000:6.03f}"
 print("CG-35 Calculator    Cedar Grove Studios")
-print(f'setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb')
+print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
 time.sleep(1)
 
 arc_flag = False
@@ -247,8 +284,22 @@ while True:
     key_name = get_key()
 
     # Display Entry Keys Cluster
-    if key_name in ("0","1","2","3","4","5","6","7","8","9",".","CHS","EEX",):
-        #print("display entry key", "digit entry mode:", digit_entry)
+    if key_name in (
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        ".",
+        "CHS",
+        "EEX",
+    ):
+        # print("display entry key", "digit entry mode:", digit_entry)
         error_flag = False
         if not digit_entry:
             # Prepare for digit entry when previous operation has finished
@@ -259,9 +310,9 @@ while True:
             eex_flag = dp_flag = False
             digit_entry = True
 
-        if digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS","EEX")):
+        if digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS", "EEX")):
             if DISPLAY_C[1:] == "0." and key_name == ".":
-                # first digit entry
+                # First digit entry
                 dp_flag = True
                 DISPLAY_C = DISPLAY_C.replace("0.", key_name)
             elif DISPLAY_C[1:] == "0.":
@@ -274,7 +325,9 @@ while True:
                         DISPLAY_C = DISPLAY_C + key_name
                     else:
                         # Integer portion (left of decimal separator)
-                        DISPLAY_C = DISPLAY_C[0:dp_index] + key_name + DISPLAY_C[dp_index:]
+                        DISPLAY_C = (
+                            DISPLAY_C[0:dp_index] + key_name + DISPLAY_C[dp_index:]
+                        )
                 else:
                     dp_flag = True
         if key_name == "CHS":
@@ -293,12 +346,21 @@ while True:
                 eex_flag = True
 
         error_flag = False
-        display_display_reg()
+        show_display_reg()
         update_x_reg()
 
     # Enter/Stack/Memory/Constant Key Cluster
-    if key_name in ("ENTER","CLR","CLX","STO","RCL", "R","x<>y","π",):
-        #print("enter/stack/memory/constant key")
+    if key_name in (
+        "ENTER",
+        "CLR",
+        "CLX",
+        "STO",
+        "RCL",
+        "R",
+        "x<>y",
+        "π",
+    ):
+        # print("enter/stack/memory/constant key")
         digit_entry = False
         error_flag = False
         if key_name == "ENTER":
@@ -319,81 +381,97 @@ while True:
             roll_stack()
             eex_flag = dp_flag = False
         if key_name == "π":
-            #X_REG = Decimal("3.141592654")
-            X_REG = (Decimal("1.0").atan() * 4)
-            #X_REG = (Decimal("1.0").atan() * 4).quantize(Decimal("1.000000000"))
+            X_REG = Decimal("1.0").atan() * 4
+            # X_REG = Decimal("3.141592654")
 
     # Monadic Operator Key Cluster
-    if key_name in ("LOG","LN","e^x","√x","ARC","SIN","COS","TAN","1/x",):
-        #print("monadic operator key")
+    if key_name in (
+        "LOG",
+        "LN",
+        "e^x",
+        "√x",
+        "ARC",
+        "SIN",
+        "COS",
+        "TAN",
+        "1/x",
+    ):
+        # print("monadic operator key")
         digit_entry = False
         error_flag = False
-        if key_name == "LOG":
-            X_REG = Decimal.log10(X_REG)
-        if key_name == "LN":
-            # check for error: can't derive the ln from a negative number
-            X_REG = Decimal.ln(X_REG)
-        if key_name == "e^x":
-            # check for errors
-            X_REG = Decimal.exp(X_REG)
-        if key_name == "√x":
-            X_REG = Decimal.sqrt(X_REG)
-        if key_name == "ARC":
-            arc_flag = True
-        if key_name == "SIN":
-            if arc_flag:
-                X_REG = Decimal.asin(X_REG)
-            else:
-                X_REG = Decimal.sin(X_REG)
-            arc_flag = False
-        if key_name == "COS":
-            if arc_flag:
-                X_REG = Decimal.acos(X_REG)
-            else:
-                X_REG = Decimal.cos(X_REG)
-            arc_flag = False
-        if key_name == "TAN":
-            if arc_flag:
-                X_REG = Decimal.atan(X_REG)
-            else:
-                X_REG = Decimal.tan(X_REG)
-            arc_flag = False
-        if key_name == "1/x":
-            if X_REG == Decimal("0"):
-                display_error()
-            else:
-                X_REG = (1 / X_REG)
+        try:
+            if key_name == "LOG":
+                X_REG = Decimal.log10(X_REG)
+            if key_name == "LN":
+                X_REG = Decimal.ln(X_REG)
+            if key_name == "e^x":
+                X_REG = Decimal.exp(X_REG)
+            if key_name == "√x":
+                X_REG = Decimal.sqrt(X_REG)
+            if key_name == "ARC":
+                arc_flag = True
+            if key_name == "SIN":
+                if arc_flag:
+                    X_REG = Decimal.asin(X_REG)
+                else:
+                    X_REG = Decimal.sin(X_REG)
+                arc_flag = False
+            if key_name == "COS":
+                if arc_flag:
+                    X_REG = Decimal.acos(X_REG)
+                else:
+                    X_REG = Decimal.cos(X_REG)
+                arc_flag = False
+            if key_name == "TAN":
+                if arc_flag:
+                    X_REG = Decimal.atan(X_REG)
+                else:
+                    X_REG = Decimal.tan(X_REG)
+                arc_flag = False
+            if key_name == "1/x":
+                X_REG = 1 / X_REG
+        except Exception as err:
+            print("Exception:", err)
+            display_error()
 
     # Diadic Operator Key Cluster
-    if key_name in ("x^y","x<>y","-","+","*","÷",):
-        #print("diadic operator key")
+    if key_name in (
+        "x^y",
+        "x<>y",
+        "-",
+        "+",
+        "*",
+        "÷",
+    ):
+        # print("diadic operator key")
         digit_entry = False
         error_flag = False
-        if key_name == "x^y":
-            X_REG = (X_REG ** Y_REG)
-        if key_name == "x<>y":
-            temp = X_REG
-            X_REG = Y_REG
-            Y_REG = temp
-        if key_name == "-":
-            Y_REG = (Y_REG - X_REG)
-            pull_stack()
-            automatic_entry = True
-        if key_name == "+":
-            Y_REG = (Y_REG + X_REG)
-            pull_stack()
-            automatic_entry = True
-        if key_name == "*":
-            Y_REG = (Y_REG * X_REG)
-            pull_stack()
-            automatic_entry = True
-        if key_name == "÷":
-            if X_REG == Decimal("0"):
-                display_error()
-            else:
-                Y_REG = (Y_REG / X_REG)
+        try:
+            if key_name == "x^y":
+                X_REG = X_REG ** Y_REG
+            if key_name == "x<>y":
+                temp = X_REG
+                X_REG = Y_REG
+                Y_REG = temp
+            if key_name == "-":
+                Y_REG = Y_REG - X_REG
+                pull_stack()
+                automatic_entry = True
+            if key_name == "+":
+                Y_REG = Y_REG + X_REG
+                pull_stack()
+                automatic_entry = True
+            if key_name == "*":
+                Y_REG = Y_REG * X_REG
+                pull_stack()
+                automatic_entry = True
+            if key_name == "÷":
+                Y_REG = Y_REG / X_REG
                 automatic_entry = True
                 pull_stack()
+        except Exception as err:
+            print("Exception:", err)
+            display_error()
 
     if (not digit_entry) and (not error_flag):
         display_x_reg()
@@ -402,4 +480,4 @@ while True:
         print_stack()
         frame = time.monotonic() - t0
         free_memory = gc.mem_free()
-        print(f'frame: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb')
+        print(f"frame: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
