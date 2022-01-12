@@ -138,10 +138,11 @@ def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
 
     return Decimal(sign+coefficient+exponent)
 
-def convert_decimal_to_display(value=Decimal(0)):
+def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
-    value = value * Decimal("1.")  # Force value to getcontext.prec() value
-    decimal_text = str(value.quantize(Decimal("1.000000000")).normalize())[0:12]
+    value = value.quantize(Decimal("1.000000000"))  # round to 10-digit precision
+    #value = value.normalize()  # strip trailing zeros and create canonical value
+    decimal_text = str(value)
 
     # Retain "-" as sign but replace "+" with " "
     if decimal_text[0] == "-":
@@ -158,25 +159,28 @@ def convert_decimal_to_display(value=Decimal(0)):
     # remove trailing zeros from coefficient
     while coefficient.find(".") <= 12 and coefficient[-1] == "0":
         coefficient = coefficient[0:-1]
-    # don't display minus zero
+    # don't display minus zero coefficient
     if coefficient == "-0.":
         coefficient = " 0."
 
-    if decimal_text.find("E") < 0:
+    # if no exponent separator or coefficient is zero, blank the exponent value
+    if decimal_text.find("E") < 0 or coefficient[1:] == "0.":
         exponent = "   "
     else:
         exponent = decimal_text.split("E", 1)[1]
+
     return coefficient, exponent
 
 
 def print_stack():
     # print all stack registers
+    print("-" * 32)
     print(f"D.X_REG:  {X_REG}  DISPLAY: '{convert_decimal_to_display(X_REG)[0] + convert_decimal_to_display(X_REG)[1]}'")
     print(f"D.Y_REG:  {Y_REG}")
     print(f"D.Z_REG:  {Z_REG}")
     print(f"D.T_REG:  {T_REG}")
-    print()
     print(f"D.MEM  :  {MEM}")
+    print("-" * 32)
     return
 
 
@@ -189,6 +193,14 @@ def display_display_reg():
         exponent = "   "
     coefficient = coefficient + (" " * (12 - len(coefficient)))  # If needed, pad coefficient with spaces
     x_reg_display.text = coefficient + exponent
+    return
+
+
+def display_error():
+    """Show error indicator on display without modifying registers."""
+    global error_flag
+    x_reg_display.text = "---------------"
+    error_flag = True
     return
 
 
@@ -223,7 +235,8 @@ time.sleep(1)
 arc_flag = False
 eex_flag = False
 dp_flag = False
-digit_entry_mode = False
+digit_entry = False
+automatic_entry = False
 
 clr()
 display_x_reg()
@@ -235,14 +248,18 @@ while True:
 
     # Display Entry Keys Cluster
     if key_name in ("0","1","2","3","4","5","6","7","8","9",".","CHS","EEX",):
-        #print("display entry key", "digit entry mode:", digit_entry_mode)
-        if not digit_entry_mode:
+        #print("display entry key", "digit entry mode:", digit_entry)
+        error_flag = False
+        if not digit_entry:
             # Prepare for digit entry when previous operation has finished
+            if automatic_entry:
+                push_stack()  #  Automatic ENTER -- only after calculation
+                automatic_entry = False
             clr("x")
             eex_flag = dp_flag = False
-            digit_entry_mode = True
+            digit_entry = True
 
-        if digit_entry_mode and len(DISPLAY_C) < 12 and (key_name not in ("CHS","EEX")):
+        if digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS","EEX")):
             if DISPLAY_C[1:] == "0." and key_name == ".":
                 # first digit entry
                 dp_flag = True
@@ -275,12 +292,15 @@ while True:
             if not eex_flag:
                 eex_flag = True
 
+        error_flag = False
         display_display_reg()
         update_x_reg()
 
     # Enter/Stack/Memory/Constant Key Cluster
     if key_name in ("ENTER","CLR","CLX","STO","RCL", "R","x<>y","π",):
         #print("enter/stack/memory/constant key")
+        digit_entry = False
+        error_flag = False
         if key_name == "ENTER":
             push_stack()
             eex_flag = dp_flag = False
@@ -293,78 +313,89 @@ while True:
         if key_name == "STO":
             MEM = X_REG
         if key_name == "RCL":
+            push_stack()
             X_REG = MEM
         if key_name == "R":
             roll_stack()
             eex_flag = dp_flag = False
         if key_name == "π":
-            #X_REG = Decimal("3.141592654").normalize()
-            X_REG = (Decimal("1.0").atan() * 4).normalize()
+            #X_REG = Decimal("3.141592654")
+            X_REG = (Decimal("1.0").atan() * 4)
             #X_REG = (Decimal("1.0").atan() * 4).quantize(Decimal("1.000000000"))
-        digit_entry_mode = False
 
     # Monadic Operator Key Cluster
     if key_name in ("LOG","LN","e^x","√x","ARC","SIN","COS","TAN","1/x",):
         #print("monadic operator key")
+        digit_entry = False
+        error_flag = False
         if key_name == "LOG":
-            X_REG = Decimal.log10(X_REG).normalize()
+            X_REG = Decimal.log10(X_REG)
         if key_name == "LN":
             # check for error: can't derive the ln from a negative number
-            X_REG = Decimal.ln(X_REG).normalize()
+            X_REG = Decimal.ln(X_REG)
         if key_name == "e^x":
             # check for errors
-            X_REG = Decimal.exp(X_REG).normalize()
+            X_REG = Decimal.exp(X_REG)
         if key_name == "√x":
-            X_REG = Decimal.sqrt(X_REG).normalize()
+            X_REG = Decimal.sqrt(X_REG)
         if key_name == "ARC":
             arc_flag = True
         if key_name == "SIN":
             if arc_flag:
-                X_REG = Decimal.asin(X_REG).normalize()
+                X_REG = Decimal.asin(X_REG)
             else:
-                X_REG = Decimal.sin(X_REG).normalize()
+                X_REG = Decimal.sin(X_REG)
             arc_flag = False
         if key_name == "COS":
             if arc_flag:
-                X_REG = Decimal.acos(X_REG).normalize()
+                X_REG = Decimal.acos(X_REG)
             else:
-                X_REG = Decimal.cos(X_REG).normalize()
+                X_REG = Decimal.cos(X_REG)
             arc_flag = False
         if key_name == "TAN":
             if arc_flag:
-                X_REG = Decimal.atan(X_REG).normalize()
+                X_REG = Decimal.atan(X_REG)
             else:
-                X_REG = Decimal.tan(X_REG).normalize()
+                X_REG = Decimal.tan(X_REG)
             arc_flag = False
         if key_name == "1/x":
-            # Check for ERROR: divide by zero
-            X_REG = (1 / X_REG).normalize()
-        digit_entry_mode = False
+            if X_REG == Decimal("0"):
+                display_error()
+            else:
+                X_REG = (1 / X_REG)
 
     # Diadic Operator Key Cluster
     if key_name in ("x^y","x<>y","-","+","*","÷",):
         #print("diadic operator key")
+        digit_entry = False
+        error_flag = False
         if key_name == "x^y":
-            X_REG = (X_REG ** Y_REG).normalize()
+            X_REG = (X_REG ** Y_REG)
         if key_name == "x<>y":
             temp = X_REG
             X_REG = Y_REG
             Y_REG = temp
         if key_name == "-":
-            Y_REG = (Y_REG - X_REG).normalize()
+            Y_REG = (Y_REG - X_REG)
             pull_stack()
+            automatic_entry = True
         if key_name == "+":
-            Y_REG = (Y_REG + X_REG).normalize()
+            Y_REG = (Y_REG + X_REG)
             pull_stack()
+            automatic_entry = True
         if key_name == "*":
-            Y_REG = (Y_REG * X_REG).normalize()
+            Y_REG = (Y_REG * X_REG)
             pull_stack()
+            automatic_entry = True
         if key_name == "÷":
-            Y_REG = (Y_REG / X_REG).normalize()
-            pull_stack()
-        digit_entry_mode = False
+            if X_REG == Decimal("0"):
+                display_error()
+            else:
+                Y_REG = (Y_REG / X_REG)
+                automatic_entry = True
+                pull_stack()
 
-    if not digit_entry_mode:
+    if (not digit_entry) and (not error_flag):
         display_x_reg()
 
         gc.collect()  # Clean-up memory heap space
