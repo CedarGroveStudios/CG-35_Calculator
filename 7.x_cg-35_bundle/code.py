@@ -23,7 +23,6 @@ Implementation Notes
 * Jeff Epler's adaptation of micropython udecimal and utrig:
   <https://github.com/jepler/Jepler_CircuitPython_udecimal>
 
-
 to do before v1.0 beta release:
     - add exponent digit entry
     - convert trigometric functions to degrees
@@ -53,7 +52,6 @@ CALIBRATE = False
 
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
-# sdcard = SDCard()
 
 # Create the primary displayio.Group layer
 calculator = displayio.Group()
@@ -73,6 +71,8 @@ buttons = CalculatorButtons(
 led_display = BubbleDisplay(
     units=5, digits=3, mode="HP-35", center=(0.5, 0.08), size=0.58
 )
+
+gc.collect()  # Clean-up memory heap space
 
 # Initiate the display, memory, and stack
 DISPLAY_C = " 0."
@@ -175,7 +175,17 @@ def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
 def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
     # Round to 10-digit precision and convert to string
-    value = value.quantize(Decimal("1.000000000"))
+    if value.is_finite():
+        print(value)
+        value = value.quantize(Decimal("1000000000."))
+        #getcontext().prec = 10
+        print(value)
+        #value = value * Decimal("1.")
+        #print(value)
+        #getcontext().prec = 20
+        #print(value)
+    else:
+        value = Decimal("0")
     decimal_text = str(value)
 
     # Retain "-" as sign but replace "+" with " "
@@ -235,6 +245,7 @@ def show_display_reg():
 def display_error():
     """Show error indicator on display."""
     global error_flag
+    clr()
     led_display.text = "---------------"
     error_flag = True
     return
@@ -243,6 +254,8 @@ def display_error():
 def update_x_reg():
     """Move DISPLAY registers' content to the X_REG."""
     global X_REG, DISPLAY_C, DISPLAY_E
+    if DISPLAY_E == "-00":
+        DISPLAY_E = " 00"
     X_REG = convert_display_to_decimal(DISPLAY_C, DISPLAY_E)
     return
 
@@ -258,15 +271,14 @@ def display_x_reg():
     led_display.text = coefficient + exponent
     return
 
-
 display.show(calculator)
 
 gc.collect()
 free_memory = gc.mem_free()
 frame = time.monotonic() - t0
-led_display.text = f"{frame:5.02f}    {free_memory/1000:6.03f}"
 print("CG-35 Calculator    Cedar Grove Studios")
 print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
+led_display.text = f"{frame:5.02f}    {free_memory/1000:6.03f}"
 time.sleep(1)
 
 arc_flag = False
@@ -310,7 +322,7 @@ while True:
             eex_flag = dp_flag = False
             digit_entry = True
 
-        if digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS", "EEX")):
+        if (not eex_flag) and digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS", "EEX")):
             if DISPLAY_C[1:] == "0." and key_name == ".":
                 # First digit entry
                 dp_flag = True
@@ -330,8 +342,15 @@ while True:
                         )
                 else:
                     dp_flag = True
+
+        if eex_flag and (key_name not in ("CHS", "EEX")):
+            if DISPLAY_E[1:3] == "00":  # first digit entry
+                DISPLAY_E = DISPLAY_E[0:2]+key_name
+            elif DISPLAY_E[1] == "0":  # second digit entry
+                DISPLAY_E = DISPLAY_E[0] + DISPLAY_E[2] + key_name
+
         if key_name == "CHS":
-            if not eex_flag:
+            if not eex_flag and DISPLAY_C[1:3] != "0.":
                 if DISPLAY_C[0] == "-":
                     DISPLAY_C = " " + DISPLAY_C[1:]
                 else:
@@ -342,8 +361,9 @@ while True:
                 else:
                     DISPLAY_E = "-" + DISPLAY_E[1:]
         if key_name == "EEX":
-            if not eex_flag:
-                eex_flag = True
+            eex_flag = True
+
+
 
         error_flag = False
         show_display_reg()
@@ -433,6 +453,9 @@ while True:
         except Exception as err:
             print("Exception:", err)
             display_error()
+        if X_REG.is_infinite():
+            print("Error: Infinite value in X_REG")
+            display_error()
 
     # Diadic Operator Key Cluster
     if key_name in (
@@ -471,6 +494,9 @@ while True:
                 pull_stack()
         except Exception as err:
             print("Exception:", err)
+            display_error()
+        if X_REG.is_infinite() or Y_REG.is_infinite():
+            print("Error: Infinite value in X_REG and/or Y_REG")
             display_error()
 
     if (not digit_entry) and (not error_flag):
