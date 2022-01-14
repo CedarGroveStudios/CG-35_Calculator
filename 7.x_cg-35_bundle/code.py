@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg-35_calculator.py  2022-01-12 v0.812 ALPHA
+cg-35_calculator.py  2022-01-13 v0.813 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -43,7 +43,7 @@ from cedargrove_calculator.case import CalculatorCase
 from cedargrove_widgets.bubble_display import BubbleDisplay
 
 # from cedargrove_sdcard import SDCard
-from jepler_udecimal import Decimal, getcontext, setcontext, localcontext
+from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND_HALF_UP
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
 # To calibrate the touchscreeen, change calibrate=False to calibrate=True
@@ -83,6 +83,7 @@ X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
 getcontext().prec = 20
 getcontext().Emax = 99
 getcontext().Emin = -99
+#getcontext().rounding = ROUND_HALF_UP
 
 # Add the case, bubble display, and button displayio layers
 calculator.append(case_group)
@@ -176,42 +177,63 @@ def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
     # Round to 10-digit precision and convert to string
     if value.is_finite():
-        print(value)
-        value = value.quantize(Decimal("1000000000."))
+        print("-" * 20)
+        print("original value", value)
+        getcontext().precision = 10
+        print("start",value)
+        #value = value.quantize(Decimal("1000000000E-00"))
         #getcontext().prec = 10
-        print(value)
-        #value = value * Decimal("1.")
-        #print(value)
-        #getcontext().prec = 20
+        #print("quantize", value)
+        value = value * Decimal("1.")
+        print("after multiply", value)
+        getcontext().prec = 20
         #print(value)
     else:
         value = Decimal("0")
     decimal_text = str(value)
+    print("decimal_text", decimal_text)
 
-    # Retain "-" as sign but replace "+" with " "
-    if decimal_text[0] == "-":
-        coefficient = decimal_text.split("E", 1)[0]
+    # Separate coefficient from exponent
+    if decimal_text.find("E") >=0:
+        coefficient, exponent = decimal_text.split("E", 1)
     else:
-        coefficient = " " + decimal_text.split("E", 1)[0]
-    # Place a decimal point in tenth digit position if possible
-    if coefficient.find(".") < 0 and len(coefficient) < 10:
+        coefficient = decimal_text
+        exponent = " 00"
+
+    print("* coefficient, exponent", coefficient, exponent)
+
+    # Retain "-" as sign; add " " if no neg sign (positive value)
+    if coefficient[0] != "-":
+        coefficient = " " + coefficient
+    print("coefficient", coefficient, len(coefficient))
+
+    # If no decimal point in coefficient, add one to the end
+    if coefficient.find(".") < 0 and len(coefficient) < 12:
         coefficient = coefficient + "."
+
     # Remove leading zeros except at start of digit entry
     if coefficient[1:] != "0.":
         while coefficient.find(".") > 1 and coefficient[1] == "0":
             coefficient = coefficient[0] + coefficient[2:]
-    # Remove trailing zeros from coefficient
+
+    # Remove trailing zeros from coefficient  ERROR?
     while coefficient.find(".") <= 12 and coefficient[-1] == "0":
         coefficient = coefficient[0:-1]
+
     # Don't display a minus zero coefficient
     if coefficient == "-0.":
         coefficient = " 0."
+
+    print("** coefficient, exponent", coefficient, exponent)
 
     # If no exponent separator or coefficient is zero, blank the exponent value
     if decimal_text.find("E") < 0 or coefficient[1:] == "0.":
         exponent = "   "
     else:
         exponent = decimal_text.split("E", 1)[1]
+
+    print("*** coefficient, exponent", coefficient, exponent)
+
     return coefficient, exponent
 
 
