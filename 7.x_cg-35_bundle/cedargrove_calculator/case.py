@@ -35,9 +35,11 @@ HP_CASE = [
 
 
 class CalculatorCase(displayio.Group):
-    def __init__(self, debug=False):
+    def __init__(self, visible=True, debug=False):
         """Instantiate the CalculatorCase graphic.
         Builds the displayio button_group."""
+
+        self._visible = visible
 
         WIDTH = board.DISPLAY.width
         HEIGHT = board.DISPLAY.height
@@ -52,28 +54,30 @@ class CalculatorCase(displayio.Group):
         # Build displayio case group
         case_group = displayio.Group()
 
-        for i in HP_CASE:
-            case_element = vectorio.Rectangle(
-                pixel_shader=i[3],
-                x=int(round(i[0][0] / 4.3 * HEIGHT, 0)) + self._l_margin,
-                y=int(round(i[0][1] / 4.3 * HEIGHT, 0)),
-                width=int(round(i[1][0] / 4.3 * HEIGHT, 0)),
-                height=int(round(i[1][1] / 4.3 * HEIGHT, 0)),
-            )
-            case_group.append(case_element)
+        if self._visible:
 
-        # Power switch
-        pwr_text = Label(
-            font=FONT_0,
-            text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
-            color=Colors.BLACK,
-        )
-        pwr_text.anchor_point = (0, 0)
-        pwr_text.anchored_position = (
-            int(round(0.2 / 4.3 * HEIGHT, 0)) + self._l_margin,
-            int(round(HP_CASE[3][0][1] / 4.3 * HEIGHT, 0)),
-        )
-        case_group.append(pwr_text)
+            for i in HP_CASE:
+                case_element = vectorio.Rectangle(
+                    pixel_shader=i[3],
+                    x=int(round(i[0][0] / 4.3 * HEIGHT, 0)) + self._l_margin,
+                    y=int(round(i[0][1] / 4.3 * HEIGHT, 0)),
+                    width=int(round(i[1][0] / 4.3 * HEIGHT, 0)),
+                    height=int(round(i[1][1] / 4.3 * HEIGHT, 0)),
+                )
+                case_group.append(case_element)
+
+            # Power switch
+            pwr_text = Label(
+                font=FONT_0,
+                text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
+                color=Colors.BLACK,
+            )
+            pwr_text.anchor_point = (0, 0)
+            pwr_text.anchored_position = (
+                int(round(0.2 / 4.3 * HEIGHT, 0)) + self._l_margin,
+                int(round(HP_CASE[-1][0][1] / 4.3 * HEIGHT, 0)),
+            )
+            case_group.append(pwr_text)
 
         super().__init__()
         self.append(case_group)

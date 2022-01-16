@@ -50,6 +50,8 @@ import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 # Enter new calibration settings in cedargrove_calculator.buttons_pyportal.py
 CALIBRATE = False
 
+VISIBLE_CASE = True
+
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
 
@@ -62,7 +64,7 @@ display.rotation = 90
 display.brightness = 1.0  # Titano: 0.55 max for camera image
 
 # Instatiate case group and buttons class
-case_group = CalculatorCase()
+case_group = CalculatorCase(visible=VISIBLE_CASE)
 buttons = CalculatorButtons(
     l_margin=case_group.l_margin, timeout=10, calibrate=CALIBRATE, click=True
 )
