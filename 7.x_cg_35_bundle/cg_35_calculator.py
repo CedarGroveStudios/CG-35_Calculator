@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg-35_calculator.py  2022-01-13 v0.813 ALPHA
+cg_35_calculator.py  2022-01-24 v0.824 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -46,10 +46,6 @@ from cedargrove_widgets.bubble_display import BubbleDisplay
 from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND_HALF_UP
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
-# To calibrate the touchscreeen, change calibrate=False to calibrate=True
-# Enter new calibration settings in cedargrove_calculator.buttons_pyportal.py
-CALIBRATE = False
-
 VISIBLE_CASE = True
 
 t0 = time.monotonic()  # Reset start-up time counter
@@ -66,7 +62,7 @@ display.brightness = 1.0  # Titano: 0.55 max for camera image
 # Instatiate case group and buttons class
 case_group = CalculatorCase(visible=VISIBLE_CASE)
 buttons = CalculatorButtons(
-    l_margin=case_group.l_margin, timeout=10, calibrate=CALIBRATE, click=True
+    l_margin=case_group.l_margin, timeout=10, click=True
 )
 
 # Instantiate the BubbleDisplay widget: 15-digit display, dedicated decimal point

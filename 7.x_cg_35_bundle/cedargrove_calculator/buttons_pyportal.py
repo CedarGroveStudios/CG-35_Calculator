@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.buttons_pyportal.py
-# 2021-12-28 v1.1
+# 2022-01-24 v1.24
 
 import board
 import time
@@ -72,7 +72,7 @@ HP_BUTTONS = [
 
 
 class CalculatorButtons(displayio.Group):
-    def __init__(self, l_margin=0, timeout=1.0, calibrate=False, click=True):
+    def __init__(self, l_margin=0, timeout=1.0, click=True):
         """Instantiate the Calculator on-screen touch buttons for PyPortal devices.
         Builds the displayio button_group. Assumes that the display rotation is
         90 degrees."""
@@ -82,11 +82,6 @@ class CalculatorButtons(displayio.Group):
         self._l_margin = l_margin
         WIDTH = board.DISPLAY.width
         HEIGHT = board.DISPLAY.height
-
-        if calibrate:
-            from cedargrove_touch_calibrator import touch_calibrator
-
-            touch_calibrator()
 
         # Create a simple indexed list of button names
         self._button_index = []
@@ -99,7 +94,7 @@ class CalculatorButtons(displayio.Group):
             board.TOUCH_YD,
             board.TOUCH_XL,
             board.TOUCH_XR,
-            calibration=((8720, 56775), (5031, 59639)),  # Titano
+            calibration=((8807, 56615), (4984, 58063)),  # Titano
             size=(WIDTH, HEIGHT),
             samples=4,  # Default: 4 samples
             z_threshold=10000,  # Default: 10000
