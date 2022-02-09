@@ -100,7 +100,7 @@ class CalculatorButtons(displayio.Group):
             z_threshold=10000,  # Default: 10000
         )
 
-        # FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
+        # self.FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
         self.FONT_0 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
 
         # Build displayio button group

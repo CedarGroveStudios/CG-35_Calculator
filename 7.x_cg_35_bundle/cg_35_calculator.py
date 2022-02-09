@@ -266,7 +266,7 @@ def display_error():
     """Show error indicator on display."""
     global error_flag
     clr()
-    led_display.text = "---------------"
+    led_display.text = "." * 15
     error_flag = True
     return
 
