@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.case.py
-# 2022-01-02 v1.2
+# 2022-02-09 v1.209
 
 import board
 import displayio
@@ -34,10 +34,46 @@ HP_CASE = [
 ]
 
 
+class LEDDisplay(displayio.Group):
+    def __init__(self, scale=1, display_color=0xFF0000):
+        """Instantiate the calculator LED display.
+        Builds the displayio led_display_group."""
+
+        _scale = scale
+
+        FONT_0 = bitmap_font.load_font("/fonts/SevenSeg-11.bdf")
+
+        # Build displayio LED display group
+        led_display_group = displayio.Group()
+
+        # LED display label
+        self._led_digits = Label(
+            font=FONT_0,
+            text="-1234567890EE00",
+            color=display_color,
+        )
+        self._led_digits.anchor_point = (0, 0)
+        self._led_digits.anchored_position = (board.DISPLAY.width * 0.2 // _scale, 36 // _scale)
+        led_display_group.append(self._led_digits)
+
+        super().__init__(scale=_scale)
+        self.append(led_display_group)
+        return
+
+    @property
+    def text(self):
+        return self._led_digits.text
+
+    @text.setter
+    def text(self, text=""):
+        self._led_digits.text = text[0:15]
+        return
+
+
 class CalculatorCase(displayio.Group):
     def __init__(self, visible=True, debug=False):
         """Instantiate the CalculatorCase graphic.
-        Builds the displayio button_group."""
+        Builds the displayio button group."""
 
         self._visible = visible
 
