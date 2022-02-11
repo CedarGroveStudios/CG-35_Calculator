@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2022-01-24 v0.824 ALPHA
+cg_35_calculator.py  2022-02-10 v0.0210 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -24,8 +24,7 @@ Implementation Notes
   <https://github.com/jepler/Jepler_CircuitPython_udecimal>
 
 to do before v1.0 beta release:
-    - add exponent digit entry
-    - convert trigometric functions to degrees
+    - fix Decimal to display formatting and rounding
 optional/future features:
     - degrees/radians switch
     - scientific/engineering/fixed decimal point mode
@@ -77,6 +76,7 @@ gc.collect()  # Clean-up memory heap space
 DISPLAY_C = " 0."
 DISPLAY_E = " 00"
 X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
+PI = Decimal("1.0").atan() * 4  # Alternative: PI = Decimal("3.141592654")
 
 # Sets the default internal precision and exponent range
 getcontext().prec = 20
@@ -264,9 +264,13 @@ def show_display_reg():
 
 
 def display_error():
-    """Show error indicator on display."""
+    """Flash error indicator on display."""
     global error_flag
     clr()
+    led_display.text = "." * 15
+    time.sleep(0.2)
+    led_display.text = " " * 15
+    time.sleep(0.2)
     led_display.text = "." * 15
     error_flag = True
     return
@@ -282,7 +286,7 @@ def update_x_reg():
 
 
 def display_x_reg():
-    # Update the LED display with X_REG value
+    """Update the LED display with X_REG value."""
     global X_REG
     coefficient, exponent = convert_decimal_to_display(X_REG)
     DISPLAY_C = coefficient
@@ -291,6 +295,14 @@ def display_x_reg():
     coefficient = coefficient + (" " * (12 - len(coefficient)))
     led_display.text = coefficient + exponent
     return
+
+def degrees_to_radians(value):
+    """Convert Decimal degrees value to radians."""
+    return 2 * PI * ((value % 360) / 360)
+
+def radians_to_degrees(value):
+    """Convert Decimal radians value to degrees."""
+    return 360 * ((value % (2 * PI)) / (2 * PI))
 
 display.show(calculator)
 
@@ -409,7 +421,7 @@ while True:
             eex_flag = dp_flag = False
         if key_name == "CLR":
             clr()
-            eex_flag = dp_flag = False
+            eex_flag = dp_flag = arc_flag = False
         if key_name == "CLX":
             clr("x")
             eex_flag = dp_flag = False
@@ -422,8 +434,7 @@ while True:
             roll_stack()
             eex_flag = dp_flag = False
         if key_name == "π":
-            # X_REG = Decimal("1.0").atan() * 4
-            X_REG = Decimal("3.141592654")
+            X_REG = PI
 
     # Monadic Operator Key Cluster
     if key_name in (
@@ -453,21 +464,21 @@ while True:
                 arc_flag = True
             if key_name == "SIN":
                 if arc_flag:
-                    X_REG = Decimal.asin(X_REG)
+                    X_REG = radians_to_degrees(Decimal.asin(X_REG))
                 else:
-                    X_REG = Decimal.sin(X_REG)
+                    X_REG = Decimal.sin(degrees_to_radians(X_REG))
                 arc_flag = False
             if key_name == "COS":
                 if arc_flag:
-                    X_REG = Decimal.acos(X_REG)
+                    X_REG = radians_to_degrees(Decimal.acos(X_REG))
                 else:
-                    X_REG = Decimal.cos(X_REG)
+                    X_REG = Decimal.cos(degrees_to_radians(X_REG))
                 arc_flag = False
             if key_name == "TAN":
                 if arc_flag:
-                    X_REG = Decimal.atan(X_REG)
+                    X_REG = radians_to_degrees(Decimal.atan(X_REG))
                 else:
-                    X_REG = Decimal.tan(X_REG)
+                    X_REG = Decimal.tan(degrees_to_radians(X_REG))
                 arc_flag = False
             if key_name == "1/x":
                 X_REG = 1 / X_REG

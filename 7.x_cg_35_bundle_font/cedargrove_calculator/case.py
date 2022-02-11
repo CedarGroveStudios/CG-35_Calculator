@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.case.py
-# 2022-02-09 v1.209
+# 2022-02-09 v0.0209
 
 import board
 import displayio
@@ -50,7 +50,7 @@ class LEDDisplay(displayio.Group):
         # LED display label
         self._led_digits = Label(
             font=FONT_0,
-            text="-1234567890EE00",
+            text="-1.023456789-32",
             color=display_color,
         )
         self._led_digits.anchor_point = (0, 0.5)
