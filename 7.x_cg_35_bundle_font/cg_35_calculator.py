@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2022-02-10 v0.0210 ALPHA
+cg_35_calculator.py  2022-02-11 v0.0211 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -72,17 +72,19 @@ led_display = BubbleDisplay(
 
 gc.collect()  # Clean-up memory heap space
 
-# Initiate the display, memory, and stack
-DISPLAY_C = " 0."
-DISPLAY_E = " 00"
-X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
-PI = Decimal("1.0").atan() * 4  # Alternative: PI = Decimal("3.141592654")
-
 # Sets the default internal precision and exponent range
 getcontext().prec = 20
 getcontext().Emax = 99
 getcontext().Emin = -99
 #getcontext().rounding = ROUND_HALF_UP
+
+# Initiate the display, memory, and stack
+DISPLAY_C = " 0."
+DISPLAY_E = " 00"
+X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
+
+# Constants
+PI = Decimal("1.0").atan() * 4  # Alternative: PI = Decimal("3.141592654")
 
 # Add the case, bubble display, and button displayio layers
 calculator.append(case_group)
@@ -178,13 +180,10 @@ def convert_decimal_to_display(value=Decimal("0")):
     if value.is_finite():
         print("-" * 20)
         print("original value", value)
-        getcontext().precision = 10
-        print("start",value)
-        #value = value.quantize(Decimal("1000000000E-00"))
-        #getcontext().prec = 10
-        #print("quantize", value)
-        value = value * Decimal("1.")
-        print("after multiply", value)
+        getcontext().prec = 10
+        #print("start",value)
+        value = value / Decimal("1")
+        print("after divide", value)
         getcontext().prec = 20
         #print(value)
     else:
@@ -298,11 +297,12 @@ def display_x_reg():
 
 def degrees_to_radians(value):
     """Convert Decimal degrees value to radians."""
-    return 2 * PI * ((value % 360) / 360)
+    return (value % 360) * (PI * 2) / 360
 
 def radians_to_degrees(value):
     """Convert Decimal radians value to degrees."""
-    return 360 * ((value % (2 * PI)) / (2 * PI))
+    print("rad to deg", type(value))
+    return (value % (PI * 2)) * 360 / (PI * 2)
 
 display.show(calculator)
 
@@ -451,40 +451,40 @@ while True:
         # print("monadic operator key")
         digit_entry = False
         error_flag = False
-        try:
-            if key_name == "LOG":
-                X_REG = Decimal.log10(X_REG)
-            if key_name == "LN":
-                X_REG = Decimal.ln(X_REG)
-            if key_name == "e^x":
-                X_REG = Decimal.exp(X_REG)
-            if key_name == "√x":
-                X_REG = Decimal.sqrt(X_REG)
-            if key_name == "ARC":
-                arc_flag = True
-            if key_name == "SIN":
-                if arc_flag:
-                    X_REG = radians_to_degrees(Decimal.asin(X_REG))
-                else:
-                    X_REG = Decimal.sin(degrees_to_radians(X_REG))
-                arc_flag = False
-            if key_name == "COS":
-                if arc_flag:
-                    X_REG = radians_to_degrees(Decimal.acos(X_REG))
-                else:
-                    X_REG = Decimal.cos(degrees_to_radians(X_REG))
-                arc_flag = False
-            if key_name == "TAN":
-                if arc_flag:
-                    X_REG = radians_to_degrees(Decimal.atan(X_REG))
-                else:
-                    X_REG = Decimal.tan(degrees_to_radians(X_REG))
-                arc_flag = False
-            if key_name == "1/x":
-                X_REG = 1 / X_REG
-        except Exception as err:
-            print("Exception:", err)
-            display_error()
+        #try:
+        if key_name == "LOG":
+            X_REG = Decimal.log10(X_REG)
+        if key_name == "LN":
+            X_REG = Decimal.ln(X_REG)
+        if key_name == "e^x":
+            X_REG = Decimal.exp(X_REG)
+        if key_name == "√x":
+            X_REG = Decimal.sqrt(X_REG)
+        if key_name == "ARC":
+            arc_flag = True
+        if key_name == "SIN":
+            if arc_flag:
+                X_REG = radians_to_degrees(Decimal.asin(X_REG))
+            else:
+                X_REG = Decimal.sin(degrees_to_radians(X_REG))
+            arc_flag = False
+        if key_name == "COS":
+            if arc_flag:
+                X_REG = radians_to_degrees(Decimal.acos(X_REG))
+            else:
+                X_REG = Decimal.cos(degrees_to_radians(X_REG))
+            arc_flag = False
+        if key_name == "TAN":
+            if arc_flag:
+                X_REG = radians_to_degrees(Decimal.atan(X_REG))
+            else:
+                X_REG = Decimal.tan(degrees_to_radians(X_REG))
+            arc_flag = False
+        if key_name == "1/x":
+            X_REG = 1 / X_REG
+        #except Exception as err:
+        #    print("Exception:", err)
+        #    display_error()
         if X_REG.is_infinite():
             print("Error: Infinite value in X_REG")
             display_error()
