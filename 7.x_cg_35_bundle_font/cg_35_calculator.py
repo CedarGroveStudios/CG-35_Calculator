@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2022-02-11 v0.0211 ALPHA
+cg_35_calculator.py  2022-02-12 v0.0212 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -46,6 +46,8 @@ from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
 VISIBLE_CASE = True
+DISPLAY_PRECISION = 10
+INTERNAL_PRECISION = 20
 
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
@@ -73,7 +75,7 @@ led_display = BubbleDisplay(
 gc.collect()  # Clean-up memory heap space
 
 # Sets the default internal precision and exponent range
-getcontext().prec = 20
+getcontext().prec = INTERNAL_PRECISION
 getcontext().Emax = 99
 getcontext().Emin = -99
 #getcontext().rounding = ROUND_HALF_UP
@@ -84,7 +86,7 @@ DISPLAY_E = " 00"
 X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
 
 # Constants
-PI = Decimal("1.0").atan() * 4  # Alternative: PI = Decimal("3.141592654")
+PI = Decimal(1).atan() * 4  # Alternative: PI = Decimal("3.141592654")
 
 # Add the case, bubble display, and button displayio layers
 calculator.append(case_group)
@@ -176,20 +178,18 @@ def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
 
 def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
-    # Round to 10-digit precision and convert to string
+    # Round to display precision and convert to string
     if value.is_finite():
-        print("-" * 20)
-        print("original value", value)
-        getcontext().prec = 10
-        #print("start",value)
-        value = value / Decimal("1")
-        print("after divide", value)
-        getcontext().prec = 20
-        #print(value)
+        #print("-" * 20)
+        #print("original value", value)
+        getcontext().prec = DISPLAY_PRECISION
+        value = value / 1
+        #print("after divide", value)
+        getcontext().prec = INTERNAL_PRECISION
     else:
-        value = Decimal("0")
+        value = Decimal(0)
     decimal_text = str(value)
-    print("decimal_text", decimal_text)
+    #print(f"decimal_text '{decimal_text}'")
 
     # Separate coefficient from exponent
     if decimal_text.find("E") >=0:
@@ -198,12 +198,21 @@ def convert_decimal_to_display(value=Decimal("0")):
         coefficient = decimal_text
         exponent = " 00"
 
-    print("* coefficient, exponent", coefficient, exponent)
+    #print(f"* coefficient '{coefficient}', exponent '{exponent}'")
+    #print(f"  len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
-    # Retain "-" as sign; add " " if no neg sign (positive value)
+    # Coefficient: Retain "-" as sign; add " " for positive value
     if coefficient[0] != "-":
         coefficient = " " + coefficient
-    print("coefficient", coefficient, len(coefficient))
+
+    # Exponent: Replace + with space; retain minus sign
+    if exponent[0] == "+":  # if plus sign, replace with space
+        exponent = (" " * (4 -len(exponent))) + exponent[1:]
+    if exponent[0] == "-" and len(exponent) == 2:
+        exponent = "- " + exponent[-1]
+
+    #print(f"** coefficient '{coefficient}', exponent '{exponent}'")
+    #print(f"   len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     # If no decimal point in coefficient, add one to the end
     if coefficient.find(".") < 0 and len(coefficient) < 12:
@@ -222,15 +231,15 @@ def convert_decimal_to_display(value=Decimal("0")):
     if coefficient == "-0.":
         coefficient = " 0."
 
-    print("** coefficient, exponent", coefficient, exponent)
+    #print(f"*** coefficient '{coefficient}', exponent '{exponent}'")
+    #print(f"    len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     # If no exponent separator or coefficient is zero, blank the exponent value
     if decimal_text.find("E") < 0 or coefficient[1:] == "0.":
         exponent = "   "
-    else:
-        exponent = decimal_text.split("E", 1)[1]
 
-    print("*** coefficient, exponent", coefficient, exponent)
+    #print(f"**** coefficient '{coefficient}', exponent '{exponent}'")
+    #print(f"     len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     return coefficient, exponent
 

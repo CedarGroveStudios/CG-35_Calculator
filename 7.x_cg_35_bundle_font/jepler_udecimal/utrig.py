@@ -1,4 +1,4 @@
-"""CG_utrtig.py 2021-02-11"""
+"""CG_utrtig.py 2021-02-12"""
 
 #!/usr/bin/env python3
 # -*- utf-8 -*-
@@ -199,7 +199,7 @@ def asin(x, context=None):
 
     with localcontext(context) as ctx:
         ctx.prec += 2
-        pi = Decimal("1.0").atan() * 4
+        pi = Decimal(1).atan() * 4
         if x == 1:
             r = pi / 2  # pi * 1/2
         elif x == -1:
@@ -226,9 +226,9 @@ def acos(x, context=None):
     with localcontext(context) as ctx:
         ctx.prec += 2
         if x == 1:
-            r = Decimal("0")
+            r = Decimal(0)
         elif x == -1:
-            r = Decimal("1.0").atan() * 4  # pi
+            r = Decimal(1).atan() * 4  # pi
         else:
             r = atan((1 - x * x).sqrt() / x)
         if r < 0:

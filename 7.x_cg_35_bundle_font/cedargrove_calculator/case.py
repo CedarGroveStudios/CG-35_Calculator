@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.case.py
-# 2022-02-09 v0.0209
+# 2022-02-12 v0.0212
 
 import board
 import displayio
@@ -85,8 +85,8 @@ class CalculatorCase(displayio.Group):
             round(HP_CASE[0][1][0] / 4.3 * HEIGHT / 2, 0)
         )
 
-        # FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
-        FONT_0 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
+        # FONT_1 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
+        FONT_1 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
 
         # Build displayio case group
         case_group = displayio.Group()
@@ -105,14 +105,14 @@ class CalculatorCase(displayio.Group):
 
             # Power switch
             pwr_text = Label(
-                font=FONT_0,
+                font=FONT_1,
                 text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
                 color=Colors.BLACK,
             )
             pwr_text.anchor_point = (0, 0)
             pwr_text.anchored_position = (
                 int(round(0.2 / 4.3 * HEIGHT, 0)) + self._l_margin,
-                int(round(HP_CASE[-1][0][1] / 4.3 * HEIGHT, 0)),
+                int(round(HP_CASE[2][0][1] / 4.3 * HEIGHT, 0)),
             )
             case_group.append(pwr_text)
 
