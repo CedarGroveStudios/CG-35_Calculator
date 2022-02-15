@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2022-02-12 v0.0212 ALPHA
+cg_35_calculator.py  2022-02-14 v0.0214 ALPHA
 ============================================
 
 An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
@@ -49,6 +49,8 @@ VISIBLE_CASE = True
 DISPLAY_PRECISION = 10
 INTERNAL_PRECISION = 20
 
+DEBUG = False
+
 t0 = time.monotonic()  # Reset start-up time counter
 gc.collect()  # Clean-up memory heap space
 
@@ -94,6 +96,12 @@ calculator.append(led_display)
 calculator.append(buttons)
 
 
+def printd(line):
+    if DEBUG:
+        print(line)
+    return
+
+
 def clr(register=None):
     """Clear all or just X_REG; None for all registers. Clears the display."""
     global DISPLAY_C, DISPLAY_E, X_REG, Y_REG, Z_REG, T_REG, MEM
@@ -117,7 +125,7 @@ def get_key():
     key_name = None
     while not key_name:
         key_name, _, hold_time = buttons.read_buttons()
-    # print(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
+    # printd(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
     return key_name
 
 
@@ -153,6 +161,8 @@ def roll_stack():
 
 def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     """Convert display text to an equivalent Decimal value."""
+    printd(f"display_to_decimal in: '{coefficient}'  '{exponent}'")
+    getcontext().prec = DISPLAY_PRECISION
     sign = coefficient[0]
     coefficient = coefficient[1:12]
     exponent = exponent[0:3]
@@ -161,35 +171,57 @@ def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     if sign == " ":
         sign = "+"
 
-    # Clean up and reformat coefficient
+    # Clean up and reformat coefficient; remove spaces, put zero before dp if dp is in first position
+    printd(f"before '{coefficient}'")
     while coefficient.find(" ") >= 0:
         coefficient = coefficient.split(" ", 1)[0] + coefficient.split(" ", 1)[1]
+    printd(f"after  '{coefficient}'")
     if coefficient[0] == ".":
         coefficient = "0" + coefficient
+    for i in range(len(coefficient), getcontext().prec + 1):  # pad coefficient with trailing zeros for values with positive exponent
+        coefficient = coefficient + "0"
 
-    # Clean up and reformat exponent
+    # How do we preface coefficient values with negative exponent so that they convert properly?
+
+    # Clean up and reformat exponent; remove spaces, set to zero if blank, add separator E character
     while exponent.find(" ") >= 0:
         exponent = exponent.split(" ", 1)[0] + exponent.split(" ", 1)[1]
     if exponent == "":
         exponent = "0"
     exponent = "E" + str(int(exponent))
-    return Decimal(sign + coefficient + exponent)
+
+    printd(f"display_to_decimal prior to out: '{sign}' + '{coefficient}' + '{exponent}'")
+    printd(f"display_to decimal prec prior to out: '{getcontext().prec}'")
+
+    printd(f"display_to_decimal: sign + coefficient + exponent '{sign + coefficient + exponent}'")
+    new_value = Decimal(sign + coefficient + exponent)   # Reconstruct the value as Decimal type
+
+    printd(f"display_to_decimal: new_value out: '{new_value}'")
+    return new_value / 1
 
 
 def convert_decimal_to_display(value=Decimal("0")):
     """Convert a Decimal value into the equivalent display text."""
     # Round to display precision and convert to string
+    printd(f"value: '{value}'  type: {type(value)}")
     if value.is_finite():
-        #print("-" * 20)
-        #print("original value", value)
+        #printd("decimal_to_display: " + "-" * 20)
+        printd(f"decimal_to_display: original value '{value}'")
+        value = value / 1
+        printd(f"decimal_to_display: original value '{value}'")
         getcontext().prec = DISPLAY_PRECISION
         value = value / 1
-        #print("after divide", value)
-        getcontext().prec = INTERNAL_PRECISION
+        #printd("decimal_to_display: after divide", value)
+        #getcontext().prec = INTERNAL_PRECISION
     else:
         value = Decimal(0)
+
+    # DO SOME NORMALIZATION HERE
+
+    #printd(f"decimal_to_display: value.adjusted() = '{value.adjusted()}'")
+
     decimal_text = str(value)
-    #print(f"decimal_text '{decimal_text}'")
+    printd(f"decimal_to_display: decimal_text= '{decimal_text}'  value= '{value}'")
 
     # Separate coefficient from exponent
     if decimal_text.find("E") >=0:
@@ -198,8 +230,8 @@ def convert_decimal_to_display(value=Decimal("0")):
         coefficient = decimal_text
         exponent = " 00"
 
-    #print(f"* coefficient '{coefficient}', exponent '{exponent}'")
-    #print(f"  len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
+    printd(f"* coefficient '{coefficient}', exponent '{exponent}'")
+    printd(f"  len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     # Coefficient: Retain "-" as sign; add " " for positive value
     if coefficient[0] != "-":
@@ -211,8 +243,8 @@ def convert_decimal_to_display(value=Decimal("0")):
     if exponent[0] == "-" and len(exponent) == 2:
         exponent = "- " + exponent[-1]
 
-    #print(f"** coefficient '{coefficient}', exponent '{exponent}'")
-    #print(f"   len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
+    #printd(f"** coefficient '{coefficient}', exponent '{exponent}'")
+    #printd(f"   len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     # If no decimal point in coefficient, add one to the end
     if coefficient.find(".") < 0 and len(coefficient) < 12:
@@ -231,15 +263,17 @@ def convert_decimal_to_display(value=Decimal("0")):
     if coefficient == "-0.":
         coefficient = " 0."
 
-    #print(f"*** coefficient '{coefficient}', exponent '{exponent}'")
-    #print(f"    len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
+    #printd(f"*** coefficient '{coefficient}', exponent '{exponent}'")
+    #printd(f"    len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
 
     # If no exponent separator or coefficient is zero, blank the exponent value
     if decimal_text.find("E") < 0 or coefficient[1:] == "0.":
         exponent = "   "
 
-    #print(f"**** coefficient '{coefficient}', exponent '{exponent}'")
-    #print(f"     len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
+    #printd(f"**** coefficient '{coefficient}', exponent '{exponent}'")
+    #printd(f"     len(coefficient):{len(coefficient)}, len(exponent):{len(exponent)}")
+
+    getcontext().prec = INTERNAL_PRECISION
 
     return coefficient, exponent
 
@@ -295,7 +329,7 @@ def update_x_reg():
 
 def display_x_reg():
     """Update the LED display with X_REG value."""
-    global X_REG
+    global X_REG, DISPLAY_C, DISPLAY_E
     coefficient, exponent = convert_decimal_to_display(X_REG)
     DISPLAY_C = coefficient
     DISPLAY_E = exponent
@@ -304,14 +338,16 @@ def display_x_reg():
     led_display.text = coefficient + exponent
     return
 
-def degrees_to_radians(value):
+
+def convert_degrees_to_radians(value):
     """Convert Decimal degrees value to radians."""
     return (value % 360) * (PI * 2) / 360
 
-def radians_to_degrees(value):
+
+def convert_radians_to_degrees(value):
     """Convert Decimal radians value to degrees."""
-    print("rad to deg", type(value))
     return (value % (PI * 2)) * 360 / (PI * 2)
+
 
 display.show(calculator)
 
@@ -353,7 +389,7 @@ while True:
         "CHS",
         "EEX",
     ):
-        # print("display entry key", "digit entry mode:", digit_entry)
+        # printd("display entry key", "digit entry mode:", digit_entry)
         error_flag = False
         if not digit_entry:
             # Prepare for digit entry when previous operation has finished
@@ -365,6 +401,7 @@ while True:
             digit_entry = True
 
         if (not eex_flag) and digit_entry and len(DISPLAY_C) < 12 and (key_name not in ("CHS", "EEX")):
+            getcontext().prec = DISPLAY_PRECISION
             if DISPLAY_C[1:] == "0." and key_name == ".":
                 # First digit entry
                 dp_flag = True
@@ -405,8 +442,6 @@ while True:
         if key_name == "EEX":
             eex_flag = True
 
-
-
         error_flag = False
         show_display_reg()
         update_x_reg()
@@ -422,7 +457,7 @@ while True:
         "x<>y",
         "π",
     ):
-        # print("enter/stack/memory/constant key")
+        # printd("enter/stack/memory/constant key")
         digit_entry = False
         error_flag = False
         if key_name == "ENTER":
@@ -457,10 +492,11 @@ while True:
         "TAN",
         "1/x",
     ):
-        # print("monadic operator key")
+        # printd("monadic operator key")
         digit_entry = False
         error_flag = False
         #try:
+        getcontext().prec = INTERNAL_PRECISION
         if key_name == "LOG":
             X_REG = Decimal.log10(X_REG)
         if key_name == "LN":
@@ -473,24 +509,25 @@ while True:
             arc_flag = True
         if key_name == "SIN":
             if arc_flag:
-                X_REG = radians_to_degrees(Decimal.asin(X_REG))
+                X_REG = convert_radians_to_degrees(Decimal.asin(X_REG))
             else:
-                X_REG = Decimal.sin(degrees_to_radians(X_REG))
+                X_REG = Decimal.sin(convert_degrees_to_radians(X_REG))
             arc_flag = False
         if key_name == "COS":
             if arc_flag:
-                X_REG = radians_to_degrees(Decimal.acos(X_REG))
+                X_REG = convert_radians_to_degrees(Decimal.acos(X_REG))
             else:
-                X_REG = Decimal.cos(degrees_to_radians(X_REG))
+                X_REG = Decimal.cos(convert_degrees_to_radians(X_REG))
             arc_flag = False
         if key_name == "TAN":
             if arc_flag:
-                X_REG = radians_to_degrees(Decimal.atan(X_REG))
+                X_REG = convert_radians_to_degrees(Decimal.atan(X_REG))
             else:
-                X_REG = Decimal.tan(degrees_to_radians(X_REG))
+                X_REG = Decimal.tan(convert_degrees_to_radians(X_REG))
             arc_flag = False
         if key_name == "1/x":
             X_REG = 1 / X_REG
+
         #except Exception as err:
         #    print("Exception:", err)
         #    display_error()
@@ -507,10 +544,11 @@ while True:
         "*",
         "÷",
     ):
-        # print("diadic operator key")
+        # printd("diadic operator key")
         digit_entry = False
         error_flag = False
         try:
+            getcontext().prec = INTERNAL_PRECISION
             if key_name == "x^y":
                 X_REG = X_REG ** Y_REG
             if key_name == "x<>y":
@@ -542,7 +580,6 @@ while True:
 
     if (not digit_entry) and (not error_flag):
         display_x_reg()
-
         gc.collect()  # Clean-up memory heap space
         print_stack()
         frame = time.monotonic() - t0

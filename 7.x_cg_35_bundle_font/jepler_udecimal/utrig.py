@@ -1,5 +1,3 @@
-"""CG_utrtig.py 2021-02-12"""
-
 #!/usr/bin/env python3
 # -*- utf-8 -*-
 # SPDX-FileCopyrightText: 2020 Jeff Epler <https://unpythonic.net>
@@ -17,26 +15,21 @@
 
 """
 Trig functions using jepler_udecimal
-
 Importing this module adds the relevant methods to the `Decimal` object.
-
 Generally speaking, these routines increase the precision by some amount,
 perform argument range reduction followed by evaluation of a taylor polynomial,
 then reduce the precision of the result to equal the origial context's
 precision.
-
 There is no guarantee that the results are correctly rounded in all cases,
 however, in all but the rarest cases the digits except the last one can be
 trusted.
-
 Here are some examples of using utrig:
-
 >>> import jepler_udecimal.utrig
 >>> from jepler_udecimal import Decimal
 >>> Decimal('.7').atan()
 Decimal('0.6107259643892086165437588765')
 >>> Decimal('.1').acos()
-Decimal('1.47062890563333682288579851219')
+Decimal('1.470628905633336822885798512')
 >>> Decimal('-.1').asin()
 Decimal('-0.1001674211615597963455231795')
 >>> Decimal('.4').tan()
@@ -45,7 +38,6 @@ Decimal('0.4227932187381617619816354272')
 Decimal('0.8775825618903727161162815826')
 >>> Decimal('.6').sin()
 Decimal('0.5646424733950353572009454457')
-
 """
 
 from . import Decimal, localcontext, getcontext, InvalidOperation
@@ -53,6 +45,7 @@ from . import Decimal, localcontext, getcontext, InvalidOperation
 __all__ = ["acos", "asin", "atan", "cos", "sin", "tan"]
 
 _point2 = Decimal(".2")
+
 
 def atan(x, context=None):
     """Compute the arctangent of the specified value, in radians"""
@@ -201,9 +194,9 @@ def asin(x, context=None):
         ctx.prec += 2
         pi = Decimal(1).atan() * 4
         if x == 1:
-            r = pi / 2  # pi * 1/2
+            r = pi / 2  # pi * 1/2 radians
         elif x == -1:
-            r = pi * 3 / 2  # pi * 3/2
+            r = pi / -2  # pi * -1/2 radians
         else:
             r = atan(x / (1 - x * x).sqrt())
     return r / 1
@@ -226,14 +219,14 @@ def acos(x, context=None):
     with localcontext(context) as ctx:
         ctx.prec += 2
         if x == 1:
-            r = Decimal(0)
+            r = Decimal(0)  # 0 radians
         elif x == -1:
-            r = Decimal(1).atan() * 4  # pi
+            r = Decimal(1).atan() * 4  # pi radians
         else:
             r = atan((1 - x * x).sqrt() / x)
         if r < 0:
             r += 4 * atan(1)
-        return r / 1
+    return r / 1
 
 
 for name in __all__:
