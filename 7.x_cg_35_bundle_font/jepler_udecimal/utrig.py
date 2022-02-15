@@ -15,15 +15,20 @@
 
 """
 Trig functions using jepler_udecimal
+
 Importing this module adds the relevant methods to the `Decimal` object.
+
 Generally speaking, these routines increase the precision by some amount,
 perform argument range reduction followed by evaluation of a taylor polynomial,
 then reduce the precision of the result to equal the origial context's
 precision.
+
 There is no guarantee that the results are correctly rounded in all cases,
 however, in all but the rarest cases the digits except the last one can be
 trusted.
+
 Here are some examples of using utrig:
+
 >>> import jepler_udecimal.utrig
 >>> from jepler_udecimal import Decimal
 >>> Decimal('.7').atan()
@@ -38,6 +43,12 @@ Decimal('0.4227932187381617619816354272')
 Decimal('0.8775825618903727161162815826')
 >>> Decimal('.6').sin()
 Decimal('0.5646424733950353572009454457')
+>>> Decimal('1').asin()
+Decimal('1.570796326794896619231321692')
+>>> Decimal('-1').acos()
+Decimal('3.141592653589793238462643383')
+
+
 """
 
 from . import Decimal, localcontext, getcontext, InvalidOperation
@@ -192,11 +203,10 @@ def asin(x, context=None):
 
     with localcontext(context) as ctx:
         ctx.prec += 2
-        pi = Decimal(1).atan() * 4
         if x == 1:
-            r = pi / 2  # pi * 1/2 radians
+            r = atan(Decimal(1)) * 2  # pi * 1/2 radians
         elif x == -1:
-            r = pi / -2  # pi * -1/2 radians
+            r = atan(Decimal(1)) * -2  # pi * -1/2 radians
         else:
             r = atan(x / (1 - x * x).sqrt())
     return r / 1
@@ -221,7 +231,7 @@ def acos(x, context=None):
         if x == 1:
             r = Decimal(0)  # 0 radians
         elif x == -1:
-            r = Decimal(1).atan() * 4  # pi radians
+            r = atan(Decimal(1)) * 4  # pi radians
         else:
             r = atan((1 - x * x).sqrt() / x)
         if r < 0:
