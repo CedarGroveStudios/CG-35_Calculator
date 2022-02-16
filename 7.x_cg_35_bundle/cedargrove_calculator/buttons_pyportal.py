@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.buttons_pyportal.py
-# 2022-01-24 v1.24
+# 2022-01-24 v0.0124
 
 import board
 import time
@@ -97,7 +97,7 @@ class CalculatorButtons(displayio.Group):
             calibration=((8807, 56615), (4984, 58063)),  # Titano
             size=(WIDTH, HEIGHT),
             samples=4,  # Default: 4 samples
-            z_threshold=10000,  # Default: 10000
+            z_threshold=8000,  # Default: 10000
         )
 
         # self.FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
