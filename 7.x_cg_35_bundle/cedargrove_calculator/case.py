@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # cedargrove_calculator.case.py
-# 2022-02-12 v0.0212
+# 2022-02-16 v0.0216
 
 import board
 import displayio
@@ -15,6 +15,7 @@ class Colors:
     BLACK = 0x000000
     GRAY = 0x101010
     GRAY_DK = 0x080808
+    YELLOW = 0xA0A000
 
     black_palette = displayio.Palette(1)
     black_palette[0] = BLACK
@@ -50,7 +51,7 @@ class LEDDisplay(displayio.Group):
         # LED display label
         self._led_digits = Label(
             font=FONT_0,
-            text="-1.023456789-32",
+            text=" " * 15,
             color=display_color,
         )
         self._led_digits.anchor_point = (0, 0.5)
@@ -116,6 +117,19 @@ class CalculatorCase(displayio.Group):
             )
             case_group.append(pwr_text)
 
+            # Status message
+            self._status = Label(
+                font=FONT_1,
+                text=" ",
+                color=Colors.YELLOW,
+            )
+            self._status.anchor_point = (0.5, 0.5)
+            self._status.anchored_position = (
+                WIDTH // 2,
+                int(round(0.61 / 4.3 * HEIGHT, 0)),
+            )
+            case_group.append(self._status)
+
         super().__init__()
         self.append(case_group)
         return
@@ -124,3 +138,13 @@ class CalculatorCase(displayio.Group):
     def l_margin(self):
         """Left margin spacing in pixels."""
         return self._l_margin
+
+    @property
+    def status(self):
+        """Status message text."""
+        return self._status
+
+    @status.setter
+    def status(self, text=""):
+        self._status = text
+        return

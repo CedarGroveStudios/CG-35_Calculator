@@ -41,13 +41,12 @@ from cedargrove_calculator.buttons_pyportal import CalculatorButtons
 from cedargrove_calculator.case import CalculatorCase, LEDDisplay
 from cedargrove_widgets.bubble_display import BubbleDisplay
 
-# from cedargrove_sdcard import SDCard
 from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND_HALF_UP
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
 # user-modifiable parameters
 VISIBLE_CASE = True
-DISPLAY_PRECISION = 10
+DISPLAY_PRECISION  = 10
 INTERNAL_PRECISION = 20
 
 DEBUG = True  # Turns on 'printd' function
@@ -107,31 +106,28 @@ calculator.append(case_group)
 calculator.append(led_display)
 calculator.append(buttons)
 
-
 def printd(line):
     if DEBUG:
         print(line)
     return
 
-
 def clr(register=None):
-    """Clear all or just X_REG; None for all registers. Clears the display."""
+    """Clear the display and all or just X_REG; None for all registers; "x" for X_REG."""
     global DISPLAY_C, DISPLAY_E, X_REG, Y_REG, Z_REG, T_REG, MEM, ARC_FLAG
     if not register:
-        # Clear stack registers, memory, and display
+        # Clear display, stack registers, memory, and reset ARC flag
         DISPLAY_C = " 0."
         DISPLAY_E = " 00"
         X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
         ARC_FLAG = False
     elif register == "x":
-        # Clear X_REG and display
+        # Clear display and X_REG
         DISPLAY_C = " 0."
         DISPLAY_E = " 00"
         X_REG = Decimal("0")
     else:
         return False  # No register specified
     return True
-
 
 def get_key():
     """Get pressed key name. This is a blocking method (for now)."""
@@ -141,7 +137,6 @@ def get_key():
     # printd(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
     return key_name
 
-
 def push_stack():
     """Push stack values; T_REG is lost."""
     global X_REG, Y_REG, Z_REG, T_REG
@@ -149,7 +144,6 @@ def push_stack():
     Z_REG = Y_REG
     Y_REG = X_REG
     return
-
 
 def pull_stack():
     """Pull (drop) stack values; place "0" into T_REG."""
@@ -160,7 +154,6 @@ def pull_stack():
     T_REG = Decimal("0")
     return
 
-
 def roll_stack():
     """Roll stack values; place X_REG into T_REG."""
     global X_REG, Y_REG, Z_REG, T_REG
@@ -170,7 +163,6 @@ def roll_stack():
     Z_REG = T_REG
     T_REG = temp
     return
-
 
 def convert_display_to_decimal(coefficient=" 0.", exponent="   "):
     """Convert display text to an equivalent Decimal value."""
@@ -282,7 +274,6 @@ def convert_decimal_to_display(value=Decimal("0")):
 
     return coefficient, exponent
 
-
 def print_stack():
     """Print stack registers and auxillary memory."""
     print(f"-" * 48)
@@ -293,11 +284,8 @@ def print_stack():
     print(f"D.Z_REG:  {Z_REG}")
     print(f"D.T_REG:  {T_REG}")
     print(f"D.MEM  :  {MEM}")
-    print(f"- " * 24)
-    print(f"Calculator STATE: {STATE}")
     print(f"-" * 48)
     return
-
 
 def show_display_reg():
     """Display contents of DISPLAY registers."""
@@ -311,23 +299,28 @@ def show_display_reg():
     led_display.text = coefficient + exponent
     return
 
-
-def display_error():
+def display_error(text=""):
     """Flash error indicator on display."""
     global STATE, ERROR
     STATE = ERROR
-    #global error_flag
     clr()
     led_display.text = "." * 15
     time.sleep(0.2)
     led_display.text = " " * 15
     time.sleep(0.2)
     led_display.text = "." * 15
-    #error_flag = True
+    display_status(text, None)
     return
 
+def display_status(text="", duration=0.5):
+    """Display message in status area for duration in seconds."""
+    case_group.status.text = text
+    if duration:
+        time.sleep(duration)
+        case_group.status.text = ""
+    return
 
-def update_x_reg():
+def update_x_reg_from_display_reg():
     """Move DISPLAY registers' content to the X_REG."""
     global X_REG, DISPLAY_C, DISPLAY_E
     if DISPLAY_E == "-00":
@@ -335,8 +328,7 @@ def update_x_reg():
     X_REG = convert_display_to_decimal(DISPLAY_C, DISPLAY_E)
     return
 
-
-def display_x_reg():
+def update_display_reg_from_x_reg():
     """Update the LED display with X_REG value."""
     global X_REG, DISPLAY_C, DISPLAY_E
     coefficient, exponent = convert_decimal_to_display(X_REG)
@@ -347,11 +339,9 @@ def display_x_reg():
     led_display.text = coefficient + exponent
     return
 
-
 def convert_degrees_to_radians(value):
     """Convert Decimal degrees value to radians."""
     return (value % 360) * (PI * 2) / 360
-
 
 def convert_radians_to_degrees(value):
     """Convert Decimal radians value to degrees."""
@@ -365,20 +355,19 @@ free_memory = gc.mem_free()
 frame = time.monotonic() - t0
 print("CG-35 Calculator    Cedar Grove Studios")
 print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
-led_display.text = f"{frame:5.02f}    {free_memory/1000:6.03f}"
-time.sleep(1)
-
-#dp_flag = False
+print(f"Calculator STATE: {STATE}")
+display_status("... READY ...", 1)
 
 clr()
-display_x_reg()
+update_display_reg_from_x_reg()
 
 while True:
     t0 = time.monotonic()  # Reset timer for start of frame
 
     key_name = get_key()  # Wait for key press
+    display_status("", 0)  # Clear any status messages
 
-    # Display Entry Keys Cluster
+    # Display Entry Keys Cluster: 0-9, ., CHS, EEX
     if key_name in (
         "0",
         "1",
@@ -449,9 +438,9 @@ while True:
             STATE = E_ENTRY
 
         show_display_reg()
-        update_x_reg()
+        update_x_reg_from_display_reg()
 
-    # Stack Management and Constant Key Cluster
+    # Stack Management and Constant Key Cluster: ENTER, CLR, CLX, STO, RCL, R, x<>y, π
     if key_name in (
         "ENTER",
         "CLR",
@@ -484,7 +473,7 @@ while True:
         if key_name == "π":
             X_REG = PI
 
-    # Monadic Operator Key Cluster
+    # Monadic Operator Key Cluster: LOG, LN, e^x, √x, ARC, SIN, COS, ,TAN, 1/x
     if key_name in (
         "LOG",
         "LN",
@@ -532,12 +521,12 @@ while True:
                 X_REG = 1 / X_REG
         except Exception as err:
             print("Exception:", err)
-            display_error()
+            display_error(str(type(err))[8:-2])
         if X_REG.is_infinite():
             print("Error: Infinite value in X_REG")
-            display_error()
+            display_error("Infinite value in X_REG")
 
-    # Diadic Operator Key Cluster
+    # Diadic Operator Key Cluster: x^y, -, +, *, ÷
     if key_name in (
         "x^y",
         "-",
@@ -565,16 +554,17 @@ while True:
                 pull_stack()
         except Exception as err:
             print("Exception:", err)
-            display_error()
+            display_error(str(type(err))[8:-2])
         if X_REG.is_infinite() or Y_REG.is_infinite():
             print("Error: Infinite value in X_REG and/or Y_REG")
-            display_error()
+            display_error("Infinite value in X_REG")
 
     if STATE not in ("C_ENTRY", "E_ENTRY", "ERROR"):
         STATE = IDLE
-        display_x_reg()
+        update_display_reg_from_x_reg()
         gc.collect()  # Clean-up memory heap space
         print_stack()
         frame = time.monotonic() - t0
         free_memory = gc.mem_free()
         print(f"frame: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
+        print(f"Calculator STATE: {STATE}")
