@@ -13,9 +13,9 @@ from adafruit_display_text.label import Label
 
 class Colors:
     BLACK = 0x000000
+    BLUE = 0x4040D0
     GRAY = 0x101010
     GRAY_DK = 0x080808
-    YELLOW = 0xA0A000
 
     black_palette = displayio.Palette(1)
     black_palette[0] = BLACK
@@ -121,7 +121,7 @@ class CalculatorCase(displayio.Group):
             self._status = Label(
                 font=FONT_1,
                 text=" ",
-                color=Colors.YELLOW,
+                color=Colors.BLUE,
             )
             self._status.anchor_point = (0.5, 0.5)
             self._status.anchored_position = (
