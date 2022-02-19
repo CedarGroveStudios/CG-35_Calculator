@@ -34,13 +34,10 @@ import board
 import displayio
 import time
 import gc
-
 gc.collect()  # Clean-up memory heap space
 
 from cedargrove_calculator.buttons_pyportal import CalculatorButtons
 from cedargrove_calculator.case import CalculatorCase, LEDDisplay
-from cedargrove_widgets.bubble_display import BubbleDisplay
-
 from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND_HALF_UP
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
@@ -80,11 +77,6 @@ display.brightness = 1.0  # Titano: 0.55 for camera image
 case_group = CalculatorCase(visible=VISIBLE_CASE)
 buttons = CalculatorButtons(l_margin=case_group.l_margin, timeout=10, click=True)
 led_display = LEDDisplay(scale=1)
-
-"""# Instantiate the BubbleDisplay widget: 15-digit display, dedicated decimal point
-led_display = BubbleDisplay(
-    units=5, digits=3, mode="HP-35", center=(0.5, 0.08), size=0.58
-)"""
 
 gc.collect()  # Clean-up memory heap space
 
