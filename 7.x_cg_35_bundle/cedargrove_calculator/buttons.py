@@ -1,8 +1,14 @@
-# SPDX-FileCopyrightText: 2021 Cedar Grove Maker Studios
+# SPDX-FileCopyrightText: 2022 Cedar Grove Maker Studios
 # SPDX-License-Identifier: MIT
 
-# cedargrove_calculator.buttons_pyportal.py
-# 2022-01-24 v0.0124
+"""
+cedargrove_calculator.buttons.py  2022-02-19 v1.0
+=================================================
+
+Calculator buttons class.
+
+* Author(s): JG for Cedar Grove Maker Studios
+"""
 
 import board
 import time
@@ -73,9 +79,9 @@ HP_BUTTONS = [
 
 class CalculatorButtons(displayio.Group):
     def __init__(self, l_margin=0, timeout=1.0, click=True):
-        """Instantiate the Calculator on-screen touch buttons for PyPortal devices.
-        Builds the displayio button_group. Assumes that the display rotation is
-        90 degrees."""
+        """Instantiate the Calculator on-screen touch buttons the PyPortal
+        Titano. Builds the displayio button_group. Assumes that the display
+        rotation is 90 degrees (portrait orientation)."""
 
         self._timeout = timeout
         self._click = click
@@ -83,7 +89,7 @@ class CalculatorButtons(displayio.Group):
         WIDTH = board.DISPLAY.width
         HEIGHT = board.DISPLAY.height
 
-        # Create a simple indexed list of button names
+        # Create a simple indexed list of button names for button creation
         self._button_index = []
         for i in range(0, len(HP_BUTTONS)):
             self._button_index.append(HP_BUTTONS[2])
@@ -94,20 +100,20 @@ class CalculatorButtons(displayio.Group):
             board.TOUCH_YD,
             board.TOUCH_XL,
             board.TOUCH_XR,
-            calibration=((8807, 56615), (4984, 58063)),  # Titano
+            calibration=((8807, 56615), (4984, 58063)),  # Titano calibration
             size=(WIDTH, HEIGHT),
             samples=4,  # Default: 4 samples
             z_threshold=8000,  # Default: 10000
         )
 
-        # self.FONT_0 = bitmap_font.load_font("/fonts/brutalist-6.bdf")
         self.FONT_0 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
 
         # Build displayio button group
         self._buttons = []
-        self._buttons_index = []  # Simple indexed list of button names
+        self._buttons_index = []  # The list of button names used for detection
         button_group = displayio.Group()
 
+        # Create the displayio button definitions
         for i in HP_BUTTONS:
             button = Button(
                 x=int(round(i[0][0] / 4.3 * HEIGHT, 0)) + self._l_margin,
@@ -159,7 +165,8 @@ class CalculatorButtons(displayio.Group):
                 if button.contains(touch):
                     button.selected = True
                     if self._click:
-                        tone(board.A0, 3000, 0.001, length=8)  # Click on press
+                        # Make a click sound when button is pressed
+                        tone(board.A0, 3000, 0.001, length=8)
                     button_pressed = button.name
                     button_index = self._buttons_index.index(button_pressed)
                     timeout_beep = False
@@ -168,9 +175,11 @@ class CalculatorButtons(displayio.Group):
                         hold_time += 0.1
                         if hold_time >= self._timeout and not timeout_beep:
                             if self._click:
-                                tone(board.A0, 1320, 0.050, length=8)  # Beep when held
+                                # Play a beep tone if button is held
+                                tone(board.A0, 1320, 0.050, length=8)
                             timeout_beep = True
                     button.selected = False
                     if self._click:
-                        tone(board.A0, 3000, 0.001, length=8)  # Click on release
+                        # Make a click sound when button is released
+                        tone(board.A0, 3000, 0.001, length=8)
         return button_pressed, button_index, hold_time
