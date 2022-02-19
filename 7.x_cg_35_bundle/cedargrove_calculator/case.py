@@ -55,7 +55,10 @@ class LEDDisplay(displayio.Group):
             color=display_color,
         )
         self._led_digits.anchor_point = (0, 0.5)
-        self._led_digits.anchored_position = (board.DISPLAY.width * 0.18 // _scale, 40 // _scale)
+        self._led_digits.anchored_position = (
+            board.DISPLAY.width * 0.18 // _scale,
+            40 // _scale,
+        )
         led_display_group.append(self._led_digits)
 
         super().__init__(scale=_scale)
