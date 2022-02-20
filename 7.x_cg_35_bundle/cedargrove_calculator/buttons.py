@@ -90,9 +90,9 @@ class CalculatorButtons(displayio.Group):
         HEIGHT = board.DISPLAY.height
 
         # Create a simple indexed list of button names for button creation
-        self._button_index = []
+        self._button_names = []
         for i in range(0, len(HP_BUTTONS)):
-            self._button_index.append(HP_BUTTONS[2])
+            self._button_names.append(HP_BUTTONS[2])
 
         # Instantiate touch screen
         self.ts = adafruit_touchscreen.Touchscreen(
@@ -110,7 +110,7 @@ class CalculatorButtons(displayio.Group):
 
         # Build displayio button group
         self._buttons = []
-        self._buttons_index = []  # The list of button names used for detection
+        self._buttons_index = []  # The list of buttons used for detection
         button_group = displayio.Group()
 
         # Create the displayio button definitions
@@ -157,7 +157,7 @@ class CalculatorButtons(displayio.Group):
         return
 
     def read_buttons(self):
-        button_pressed = button_index = None
+        button_pressed = button_name = None
         hold_time = 0
         touch = self.ts.touch_point
         if touch:
@@ -168,7 +168,7 @@ class CalculatorButtons(displayio.Group):
                         # Make a click sound when button is pressed
                         tone(board.A0, 3000, 0.001, length=8)
                     button_pressed = button.name
-                    button_index = self._buttons_index.index(button_pressed)
+                    button_name = self._buttons_index.index(button_pressed)
                     timeout_beep = False
                     while self.ts.touch_point:
                         time.sleep(0.1)
@@ -182,4 +182,4 @@ class CalculatorButtons(displayio.Group):
                     if self._click:
                         # Make a click sound when button is released
                         tone(board.A0, 3000, 0.001, length=8)
-        return button_pressed, button_index, hold_time
+        return button_pressed, button_name, hold_time

@@ -17,11 +17,13 @@ message area just below the primary display was added.
 The calculator's graphical layout was designed to mimic the aspect ratio of the
 original calculator. Because of the relative small size of the buttons, PyPortal
 Titano touchscreen accuracy is important. Use the included touchscreen calibrator
-`touch_calibrator_built_in.py` to determine minimum and maximum x/y coordinate
-value. Those values should be used to replace the calibration values on
-line 103 of `cedargrove_calculator.buttons.py`.
+`touch_calibrator_built_in.py` to determine the minimum and maximum x/y
+coordinate values unique to the PyPortal Titano being used. Those values should
+be used to replace the calibration values on line 103 of
+`cedargrove_calculator.buttons.py`.
 
 * Author(s): JG for Cedar Grove Maker Studios
+* GitHub: <https://github.com/CedarGroveStudios/CG-35_Calculator>
 
 Implementation Notes
 --------------------
@@ -30,23 +32,25 @@ Implementation Notes
   <https://www.adafruit.com/product/4444>
 
 **Software and Dependencies:**
-* Adafruit CircuitPython firmware for the supported boards:
+* Adafruit CircuitPython firmware for the PyPortal Titano:
   <https://circuitpython.org/downloads>
-* Jeff Epler's adaptation of micropython udecimal and utrig:
+* Jeff Epler's adaptation of micropython `udecimal` and `utrig`:
   <https://github.com/jepler/Jepler_CircuitPython_udecimal>
-* Cedar Grove's SevenSeg-12.bdf font:
+* CedarGrove's `SevenSeg-12.bdf` font:
   <https://github.com/CedarGroveStudios/SevenSeg_font>
 
 Optional/future features:
     - Adjust for automatic scientific notation conversion for entered
-      values < |1| with a negative exponent > -6. This is a "feature" of
-      Decimal.
+      values < |1| with a negative exponent > -6. This is an inherent behavior
+      of the Decimal class in micropython, CircuitPython, and CPython.
     - Purge the T register when calculating trigometric functions to fully
       emulate the HP-35 process.
-    - Incorporate a selectable degrees/radians mode with indicator.
-    - Incorporate a selectable scientific/engineering/fixed decimal point mode.
+    - Incorporate a selectable degrees/radians mode with indicator
+      (enhancement).
+    - Incorporate a selectable scientific/engineering/fixed decimal point mode
+      (enhancement).
     - Add a setup button for setting initial parameters and for initiating the
-      touchscreen calibration utility.
+      touchscreen calibration utility (enhancement).
 """
 
 import board
