@@ -360,7 +360,7 @@ def convert_radians_to_degrees(value):
     return (value % (PI * 2)) * 360 / (PI * 2)
 
 
-display.show(calculator)
+display.root_group = calculator
 
 gc.collect()
 free_memory = gc.mem_free()
