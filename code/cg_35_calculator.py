@@ -1,26 +1,28 @@
-# SPDX-FileCopyrightText: 2022 Cedar Grove Maker Studios
+# SPDX-FileCopyrightText: 2022, 2024 Cedar Grove Maker Studios
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2022-02-19 v1.0
+cg_35_calculator.py  2024-04-14 v2.2
+For the ESP32-S3 4Mb/2Mb Feather and 3.5-inch TFT Capacitive FeatherWing
 ====================================
 
-An HP-35-like RPN calculator application for the Adafruit PyPortal Titano. The
-calculator sports a 10-digit LED display with 20-digit internal calculation
+An HP-35-like RPN calculator application for the Adafruit ESP32-S3 Feather
+and 3.5-inch TFT FeatherWing display with capacitive touch. The calculator
+consists of a 10-digit LED display with 20-digit internal calculation
 precision.
 
 This application emulates the HP-35 calculator's v2.0 firmware where the change
 sign (CHS) key is active only after digit entry has begun. Calculation accuracy
-of monadic, diadic, and trigometric functions was improved. An error descriptor
+of monadic, dyadic, and trigonometric functions was improved. An error descriptor
 message area just below the primary display was added.
 
 The calculator's graphical layout was designed to mimic the aspect ratio of the
-original calculator. Because of the relative small size of the buttons, PyPortal
-Titano touchscreen accuracy is important. Use the included touchscreen calibrator
-`touch_calibrator_built_in.py` to determine the minimum and maximum x/y
-coordinate values unique to the PyPortal Titano being used. Those values should
-be used to replace the calibration values on line 103 of
-`cedargrove_calculator.buttons.py`.
+original calculator. Because of the relative small size of the buttons,
+touchscreen accuracy is important, requiring the use of a capacitive touch
+screen rather than a resistive touch screen.
+
+For audible key press and status feedback, connect a piezo speaker from
+pin A0 to ground.
 
 * Author(s): JG for Cedar Grove Maker Studios
 * GitHub: <https://github.com/CedarGroveStudios/CG-35_Calculator>
@@ -28,11 +30,13 @@ be used to replace the calibration values on line 103 of
 Implementation Notes
 --------------------
 **Hardware:**
-* Adafruit 'PyPortal Titano
-  <https://www.adafruit.com/product/4444>
+* Adafruit 'ESP32-S3 4Mb/2Mb FeatherWing
+  <https://www.adafruit.com/product/5477>
+* Adafruit 'Adafruit TFT FeatherWing - 3.5" 480x320 Capacitive Touchscreen
+  <https://www.adafruit.com/product/5872>
 
 **Software and Dependencies:**
-* Adafruit CircuitPython firmware for the PyPortal Titano:
+* Adafruit CircuitPython firmware for the ESP32-S3 FeatherWing:
   <https://circuitpython.org/downloads>
 * Jeff Epler's adaptation of micropython `udecimal` and `utrig`:
   <https://github.com/jepler/Jepler_CircuitPython_udecimal>
@@ -40,24 +44,27 @@ Implementation Notes
   <https://github.com/CedarGroveStudios/SevenSeg_font>
 
 Optional/future features:
+    - Implement display brightness control.
     - Adjust for automatic scientific notation conversion for entered
       values < |1| with a negative exponent > -6. This is an inherent behavior
       of the Decimal class in micropython, CircuitPython, and CPython.
-    - Purge the T register when calculating trigometric functions to fully
+    - Purge the T register when calculating trigonometric functions to fully
       emulate the HP-35 process.
     - Incorporate a selectable degrees/radians mode with indicator
       (enhancement).
     - Incorporate a selectable scientific/engineering/fixed decimal point mode
       (enhancement).
-    - Add a setup button for setting initial parameters and for initiating the
-      touchscreen calibration utility (enhancement).
+    - Add a setup button for setting initial parameters (enhancement).
 """
 
 import board
 import displayio
 import time
 import gc
-gc.collect()  # Clean-up memory heap space
+import adafruit_ft5336
+import adafruit_hx8357
+from simpleio import tone
+# import digitalio
 
 from cedargrove_calculator.buttons import CalculatorButtons
 from cedargrove_calculator.case import CalculatorCase, LEDDisplay, Colors
@@ -65,7 +72,6 @@ from jepler_udecimal import Decimal, getcontext, setcontext, localcontext, ROUND
 import jepler_udecimal.utrig  # Needed for trig functions in Decimal
 
 # User-modifiable parameters
-VISIBLE_CASE = True
 DISPLAY_PRECISION = 10
 INTERNAL_PRECISION = 20
 
@@ -76,8 +82,8 @@ IDLE = "IDLE"  # Waiting for input or displaying results
 C_ENTRY = "C_ENTRY"  # Coefficient entry: 0-9, ., CHS, EEX
 E_ENTRY = "E_ENTRY"  # Exponent entry: 0-9, ., CHS
 STACK = "STACK"  # Stack management: ENTER, CLR, CLX, STO, RCL, R, x<>y, π
-MONADIC = "MONADIC"  # Monadic operatation: LOG, LN, e^x, √x, ARC, SIN, COS, ,TAN, 1/x
-DIADIC = "DIADIC"  # Diadic operation: x^y, -, +, *, ÷
+MONADIC = "MONADIC"  # Monadic operation: LOG, LN, e^x, √x, ARC, SIN, COS, ,TAN, 1/x
+DYADIC = "DYADIC"  # Dyadic operation: x^y, -, +, *, ÷
 ERROR = "ERROR"  # Calculation error
 
 STATE = IDLE  # Set initial state to IDLE
@@ -91,15 +97,25 @@ gc.collect()  # Clean-up memory heap space
 # Create the primary displayio.Group layer
 calculator = displayio.Group()
 
-# Rotate the display to portrait orientation
-display = board.DISPLAY
-display.rotation = 90
-display.brightness = 1.0  # Titano: 0.55 for camera image
+# 'TFT FeatherWing - 3.5" 480x320 Touchscreen'; portrait orientation
+displayio.release_displays()  # Release display resources
+tft_bus = displayio.FourWire(
+    board.SPI(), command=board.D10, chip_select=board.D9, reset=None
+)
+tft = adafruit_hx8357.HX8357(tft_bus, width=480, height=320)
+tft.rotation = 270
 
-# Instatiate case group and buttons class
-case_group = CalculatorCase(visible=VISIBLE_CASE)
-buttons = CalculatorButtons(l_margin=case_group.l_margin, timeout=10, click=True)
-led_display = LEDDisplay(scale=1)
+# Capacitive touch panel
+cts = adafruit_ft5336.Adafruit_FT5336(board.I2C())
+
+# tft.brightness = 1  # 0.55 for camera image
+
+# Instantiate case group and buttons class
+case_group = CalculatorCase(display=tft)
+buttons = CalculatorButtons(
+    l_margin=case_group.l_margin, timeout=10, click=True, display=tft, touch=cts
+)
+led_display = LEDDisplay(scale=1, display=tft)
 
 gc.collect()  # Clean-up memory heap space
 
@@ -118,6 +134,11 @@ X_REG = Y_REG = Z_REG = T_REG = MEM = Decimal("0")
 calculator.append(case_group)
 calculator.append(led_display)
 calculator.append(buttons)
+
+
+def play_tone(note=880, duration=0.1):
+    tone(board.A0, note, duration)
+    return
 
 
 def printd(line):
@@ -152,6 +173,7 @@ def get_key():
     while not key_name:
         key_name, _, hold_time = buttons.read_buttons()
     printd(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
+    play_tone()  # Key pressed
     return key_name
 
 
@@ -254,14 +276,14 @@ def convert_decimal_to_display(value=Decimal("0")):
     if coefficient.find(".") < 0 and len(coefficient) < 12:
         coefficient = coefficient + "."
 
+    # Remove trailing zeros from coefficient
+    while coefficient.find(".") <= 12 and coefficient[-1] == "0":
+        coefficient = coefficient[0:-1]
+
     # Remove leading zeros except at start of digit entry
     if coefficient[1:] != "0.":
         while coefficient.find(".") > 1 and coefficient[1] == "0":
             coefficient = coefficient[0] + coefficient[2:]
-
-    # Remove trailing zeros from coefficient
-    while coefficient.find(".") <= 12 and coefficient[-1] == "0":
-        coefficient = coefficient[0:-1]
 
     # Don't display a minus zero coefficient
     if coefficient == "-0.":
@@ -278,7 +300,7 @@ def convert_decimal_to_display(value=Decimal("0")):
 
 
 def print_stack():
-    """Print stack registers and auxillary memory in REPL."""
+    """Print stack registers and auxiliary memory in REPL."""
     print(f"-" * 48)
     print(
         f"D.X_REG:  {X_REG}  DISPLAY: '{convert_decimal_to_display(X_REG)[0] + convert_decimal_to_display(X_REG)[1]}'"
@@ -306,6 +328,7 @@ def show_display_reg():
 
 def display_error(text=""):
     """Flash error indicator on display."""
+    play_tone(440, 0.5)
     global STATE, ERROR
     STATE = ERROR
     clr()
@@ -360,7 +383,7 @@ def convert_radians_to_degrees(value):
     return (value % (PI * 2)) * 360 / (PI * 2)
 
 
-display.root_group = calculator
+tft.root_group = calculator
 
 gc.collect()
 free_memory = gc.mem_free()
@@ -368,6 +391,7 @@ frame = time.monotonic() - t0
 print("CG-35 Calculator    Cedar Grove Studios")
 print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
 print(f"Calculator STATE: {STATE}")
+play_tone(440, 0.25)  # Startup beep
 display_status("... READY ...", 1)
 
 clr()
@@ -396,10 +420,10 @@ while True:
         "EEX",
     ):
         printd(f"Display entry key: {key_name}")
-        if not "ENTRY" in STATE:
+        if "ENTRY" not in STATE:
             # Prepare for digit entry when previous operation has finished
-            if STATE == DIADIC:
-                #  Automatic ENTER only after diadic operations
+            if STATE == DYADIC:
+                #  Automatic ENTER only after dyadic operations
                 push_stack()
             clr("x")
             dp_flag = False
@@ -546,7 +570,7 @@ while True:
             print("Error: Infinite value result")
             display_error("InfiniteValue")
 
-    # Diadic Operator Key Cluster: x^y, -, +, *, ÷
+    # Dyadic Operator Key Cluster: x^y, -, +, *, ÷
     if key_name in (
         "x^y",
         "-",
@@ -554,12 +578,12 @@ while True:
         "*",
         "÷",
     ):
-        STATE = DIADIC
-        printd(f"diadic operator key: {key_name}")
+        STATE = DYADIC
+        printd(f"dyadic operator key: {key_name}")
         try:
             getcontext().prec = INTERNAL_PRECISION
             if key_name == "x^y":
-                X_REG = X_REG ** Y_REG
+                X_REG = X_REG**Y_REG
             if key_name == "-":
                 Y_REG = Y_REG - X_REG
                 pull_stack()

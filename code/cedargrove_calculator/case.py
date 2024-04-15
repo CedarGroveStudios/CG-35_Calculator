@@ -1,16 +1,15 @@
-# SPDX-FileCopyrightText: 2022 Cedar Grove Maker Studios
+# SPDX-FileCopyrightText: 2022, 2024 JG for Cedar Grove Maker Studios
 # SPDX-License-Identifier: MIT
 
 """
-cedargrove_calculator.case.py  2022-02-19 v1.0
+cedargrove_calculator.case.py  2024-04-14 v2.2
+For the ESP32-S3 4Mb/2Mb Feather and 3.5-inch TFT Capacitive FeatherWing
 ==============================================
 
 Calculator case graphics classes.
 
-* Author(s): JG for Cedar Grove Maker Studios
 """
 
-import board
 import displayio
 import vectorio
 from adafruit_bitmap_font import bitmap_font
@@ -19,9 +18,9 @@ from adafruit_display_text.label import Label
 
 class Colors:
     BLACK = 0x000000
-    BLUE = 0x4040D0
-    GRAY = 0x101010
-    GRAY_DK = 0x080808
+    BLUE = 0x606060
+    GRAY = 0x202020
+    GRAY_DK = 0x101010
 
     black_palette = displayio.Palette(1)
     black_palette[0] = BLACK
@@ -34,18 +33,17 @@ class Colors:
 # (x, y), (width, height), name, fill_color
 # object order: back to front
 HP_CASE = [
-    ((0.00, 0.00), (2.16, 0.70), "DISPLAY outline", Colors.gray_dk_palette),
-    ((0.00, 0.70), (2.16, 3.60), "KEYS outline", Colors.gray_palette),
-    ((0.45, 0.80), (0.30, 0.10), "PWR outline", Colors.gray_dk_palette),
-    ((0.60, 0.80), (0.15, 0.10), "PWR switch", Colors.black_palette),
-    ((0.08, 0.16), (2.00, 0.38), "DISPLAY area", Colors.black_palette),
+    ((39, 0), (241, 78), "DISPLAY outline", Colors.gray_dk_palette),
+    ((39, 78), (241, 402), "KEYS outline", Colors.gray_palette),
+    ((89, 89), (33, 11), "PWR outline", Colors.gray_dk_palette),
+    ((106, 89), (17, 11), "PWR switch", Colors.black_palette),
+    ((48, 18), (223, 42), "DISPLAY area", Colors.black_palette),
 ]
 
 
 class LEDDisplay(displayio.Group):
-    def __init__(self, scale=1, display_color=0xFF0000):
-        """Instantiate the calculator LED display.
-        Builds the displayio led_display_group."""
+    def __init__(self, scale=1, display_color=0xFF0000, display=None):
+        """Instantiate LED display and build led_display_group."""
 
         _scale = scale
 
@@ -57,14 +55,11 @@ class LEDDisplay(displayio.Group):
         # LED display label
         self._led_digits = Label(
             font=FONT_0,
-            text=" " * 15,
+            text="",
             color=display_color,
         )
         self._led_digits.anchor_point = (0, 0.5)
-        self._led_digits.anchored_position = (
-            board.DISPLAY.width * 0.18 // _scale,
-            40 // _scale,
-        )
+        self._led_digits.anchored_position = (57, 40)
         led_display_group.append(self._led_digits)
 
         super().__init__(scale=_scale)
@@ -82,61 +77,44 @@ class LEDDisplay(displayio.Group):
 
 
 class CalculatorCase(displayio.Group):
-    def __init__(self, visible=True, debug=False):
-        """Instantiate the CalculatorCase graphic.
-        Builds the displayio button group."""
-
-        self._visible = visible
-
-        WIDTH = board.DISPLAY.width
-        HEIGHT = board.DISPLAY.height
-
-        self._l_margin = (WIDTH // 2) - int(
-            round(HP_CASE[0][1][0] / 4.3 * HEIGHT / 2, 0)
-        )
+    def __init__(self, display=None):
+        """Instantiate case graphic and build case group."""
+        self._l_margin = HP_CASE[0][0][0]
 
         FONT_1 = bitmap_font.load_font("/fonts/OpenSans-9.bdf")
 
         # Build displayio case group
         case_group = displayio.Group()
 
-        if self._visible:
+        for part in HP_CASE:
+            case_part = vectorio.Rectangle(
+                pixel_shader=part[3],
+                x=part[0][0],
+                y=part[0][1],
+                width=part[1][0],
+                height=part[1][1],
+            )
+            case_group.append(case_part)
 
-            for i in HP_CASE:
-                case_element = vectorio.Rectangle(
-                    pixel_shader=i[3],
-                    x=int(round(i[0][0] / 4.3 * HEIGHT, 0)) + self._l_margin,
-                    y=int(round(i[0][1] / 4.3 * HEIGHT, 0)),
-                    width=int(round(i[1][0] / 4.3 * HEIGHT, 0)),
-                    height=int(round(i[1][1] / 4.3 * HEIGHT, 0)),
-                )
-                case_group.append(case_element)
+        # Status message area
+        self._status = Label(
+            font=FONT_1,
+            text="",
+            color=None,
+        )
+        self._status.anchor_point = (0.5, 0.5)
+        self._status.anchored_position = (160, 69)
+        case_group.append(self._status)
 
-            # Status message area
-            self._status = Label(
-                font=FONT_1,
-                text="CG-35",
-                color=None,
-            )
-            self._status.anchor_point = (0.5, 0.5)
-            self._status.anchored_position = (
-                WIDTH // 2,
-                int(round(0.62 / 4.3 * HEIGHT, 0)),
-            )
-            case_group.append(self._status)
-
-            # Power switch label
-            pwr_text = Label(
-                font=FONT_1,
-                text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
-                color=Colors.BLACK,
-            )
-            pwr_text.anchor_point = (0, 0)
-            pwr_text.anchored_position = (
-                int(round(0.20 / 4.3 * HEIGHT, 0)) + self._l_margin,
-                int(round(HP_CASE[2][0][1] / 4.3 * HEIGHT, 0)),
-            )
-            case_group.append(pwr_text)
+        # Power switch label
+        pwr_text = Label(
+            font=FONT_1,
+            text="OFF" + (" " * 14) + "ON" + (" " * 26) + "CG-35",
+            color=Colors.BLACK,
+        )
+        pwr_text.anchor_point = (0, 0)
+        pwr_text.anchored_position = (61, HP_CASE[2][0][1])
+        case_group.append(pwr_text)
 
         super().__init__()
         self.append(case_group)
