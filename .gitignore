@@ -1,5 +1,6 @@
 
 .DS_Store
+.idea
 .idea/CG-35_Calculator.iml
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/inspectionProfiles/Project_Default.xml
