@@ -1,15 +1,10 @@
 # Retro RPN Calculator
-The CG-35 is a HP-35-like RPN calculator application for the Adafruit ESP32-S3 Feather and 3.5-inch TFT FeatherWing display with capacitive touch. The calculator
+The CG-35 is a CircuitPython powered HP-35-like RPN calculator for the Adafruit ESP32-S3 Feather and 3.5-inch TFT FeatherWing display with capacitive touch. The calculator
 consists of a 10-digit LED display with 20-digit internal calculation precision. The emulator code is augmented by the micropython `udecimal` library adapted for CircuitPython by @jepler (Thank you!).
 
 ![The CG-35 Retro RPN Calculator](https://github.com/CedarGroveStudios/CG-35_Calculator/blob/main/photos_graphics/IMG_1988.jpeg)
 
-The CG-35 is a HP-35-like RPN calculator application for the Adafruit ESP32-S3 Feather
-and 3.5-inch TFT FeatherWing display with capacitive touch. The calculator
-consists of a 10-digit LED display with 20-digit internal calculation
-precision.
-
-This application emulates the HP-35 calculator's v2.0 firmware where the change
+The CG-35 calculator emulates the HP-35 calculator's v2.0 firmware where the change
 sign (CHS) key is active only after digit entry has begun. Calculation accuracy
 of monadic, dyadic, and trigonometric functions was improved. An error descriptor
 message area just below the primary display was added.
