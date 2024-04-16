@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 """
-cedargrove_calculator.buttons.py  2024-04-14 v2.2
-For the ESP32-S3 4Mb/2Mb Feather and 3.5-inch TFT Capacitive FeatherWing
+cedargrove_calculator.buttons.py  2024-03-11 v2.0
+modified for 3.5-inch TFT Capacitive FeatherWing with Feather RP2040
 =================================================
 
 Calculator buttons class.
@@ -152,7 +152,7 @@ class CalculatorButtons(displayio.Group):
                     button.selected = True
                     if self._click:
                         # Make a click sound when button is pressed
-                        tone(board.A0, 3000, 0.001, length=8)
+                        tone(board.A0, 2000, 0.025, length=8)
                     button_pressed = button.name
                     button_name = self._buttons_index.index(button_pressed)
                     timeout_beep = False
@@ -162,10 +162,10 @@ class CalculatorButtons(displayio.Group):
                         if hold_time >= self._timeout and not timeout_beep:
                             if self._click:
                                 # Play a beep tone if button is held
-                                tone(board.A0, 1320, 0.050, length=8)
+                                tone(board.A0, 1320, 0.100, length=8)
                             timeout_beep = True
                     button.selected = False
                     if self._click:
                         # Make a click sound when button is released
-                        tone(board.A0, 3000, 0.001, length=8)
+                        tone(board.A0, 2000, 0.025, length=8)
         return button_pressed, button_name, hold_time

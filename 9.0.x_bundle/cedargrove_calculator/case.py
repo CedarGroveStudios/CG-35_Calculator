@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 """
-cedargrove_calculator.case.py  2024-04-14 v2.2
-For the ESP32-S3 4Mb/2Mb Feather and 3.5-inch TFT Capacitive FeatherWing
+cedargrove_calculator.case.py  2024-03-11 v2.0
+modified for 3.5-inch TFT Capacitive FeatherWing with Feather RP2040
 ==============================================
 
 Calculator case graphics classes.
