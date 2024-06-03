@@ -135,6 +135,11 @@ calculator.append(case_group)
 calculator.append(led_display)
 calculator.append(buttons)
 
+# Load and add the HP35 image
+hp35_image = displayio.OnDiskBitmap(f"/35last_copy.bmp")
+calculator.append(displayio.TileGrid(hp35_image, pixel_shader=hp35_image.pixel_shader, x=38))
+
+tft.root_group = calculator
 
 def printd(line):
     """Debug print function. Use formatted print statements."""
@@ -377,7 +382,7 @@ def convert_radians_to_degrees(value):
     return (value % (PI * 2)) * 360 / (PI * 2)
 
 
-tft.root_group = calculator
+time.sleep(5)  # Hold the HP35 image on-screen for a bit
 
 gc.collect()
 free_memory = gc.mem_free()
@@ -385,6 +390,7 @@ frame = time.monotonic() - t0
 print("CG-35 Calculator    Cedar Grove Studios")
 print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
 print(f"Calculator STATE: {STATE}")
+calculator.pop()  # Remove the HP35 image
 tone(board.A0, 440, 0.25)  # Startup beep
 display_status("... READY ...", 1)
 

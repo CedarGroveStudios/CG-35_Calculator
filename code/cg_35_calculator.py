@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-cg_35_calculator.py  2024-04-14 v2.2
+cg_35_calculator.py  2024-04-16 v2.2
 For the ESP32-S3 4Mb/2Mb Feather and 3.5-inch TFT Capacitive FeatherWing
 ====================================
 
@@ -135,11 +135,11 @@ calculator.append(case_group)
 calculator.append(led_display)
 calculator.append(buttons)
 
+# Load and add the HP35 image
+hp35_image = displayio.OnDiskBitmap(f"/35last_copy.bmp")
+calculator.append(displayio.TileGrid(hp35_image, pixel_shader=hp35_image.pixel_shader, x=38))
 
-def play_tone(note=880, duration=0.1):
-    tone(board.A0, note, duration)
-    return
-
+tft.root_group = calculator
 
 def printd(line):
     """Debug print function. Use formatted print statements."""
@@ -173,7 +173,6 @@ def get_key():
     while not key_name:
         key_name, _, hold_time = buttons.read_buttons()
     printd(f"get_key: name:{key_name:5s} hold_time:{hold_time:5.3f}s")
-    play_tone()  # Key pressed
     return key_name
 
 
@@ -328,7 +327,7 @@ def show_display_reg():
 
 def display_error(text=""):
     """Flash error indicator on display."""
-    play_tone(440, 0.5)
+    tone(board.A0, 440, 0.6)
     global STATE, ERROR
     STATE = ERROR
     clr()
@@ -383,7 +382,7 @@ def convert_radians_to_degrees(value):
     return (value % (PI * 2)) * 360 / (PI * 2)
 
 
-tft.root_group = calculator
+time.sleep(5)  # Hold the HP35 image on-screen for a bit
 
 gc.collect()
 free_memory = gc.mem_free()
@@ -391,7 +390,8 @@ frame = time.monotonic() - t0
 print("CG-35 Calculator    Cedar Grove Studios")
 print(f"setup: {frame:5.02f}sec   free memory: {free_memory/1000:6.03f}kb")
 print(f"Calculator STATE: {STATE}")
-play_tone(440, 0.25)  # Startup beep
+calculator.pop()  # Remove the HP35 image
+tone(board.A0, 440, 0.25)  # Startup beep
 display_status("... READY ...", 1)
 
 clr()
