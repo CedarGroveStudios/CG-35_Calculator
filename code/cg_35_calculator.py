@@ -58,6 +58,7 @@ Optional/future features:
 """
 
 import board
+import fourwire
 import displayio
 import time
 import gc
@@ -99,7 +100,7 @@ calculator = displayio.Group()
 
 # 'TFT FeatherWing - 3.5" 480x320 Touchscreen'; portrait orientation
 displayio.release_displays()  # Release display resources
-tft_bus = displayio.FourWire(
+tft_bus = fourwire.FourWire(
     board.SPI(), command=board.D10, chip_select=board.D9, reset=None
 )
 tft = adafruit_hx8357.HX8357(tft_bus, width=480, height=320)
